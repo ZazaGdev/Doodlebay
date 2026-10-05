@@ -4,26 +4,15 @@
 // stroke turns it into "Untitled N" (see onCreated), and from then on it saves like any file.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Excalidraw, MainMenu, loadFromBlob, serializeAsJSON, serializeLibraryAsJSON,
+  Excalidraw, MainMenu, loadFromBlob, serializeAsJSON,
   getSceneVersion, useHandleLibrary,
 } from '@excalidraw/excalidraw';
+import LibrarySections, { libraryAdapter, noteInstall } from './LibrarySections.jsx';
 
 const SAVE_DELAY = 800;
 
 const UI = {
   canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: true, export: { saveFileToDisk: true } },
-};
-
-const libraryAdapter = {
-  load: async () => {
-    const text = await window.desk.loadLibrary();
-    if (!text) return null;
-    try {
-      const data = JSON.parse(text);
-      return { libraryItems: data.libraryItems || data.library || [] };
-    } catch { return null; }
-  },
-  save: async ({ libraryItems }) => window.desk.saveLibrary(serializeLibraryAsJSON(libraryItems)),
 };
 
 // What has to change for the file on disk to be out of date.
@@ -104,7 +93,7 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated 
     };
     window.addEventListener('keydown', onKey, true);
     const offFlush = window.desk.onFlush(() => save().finally(() => window.desk.flushed()));
-    const offInstall = window.desk.onLibraryInstall(hash => { window.location.hash = hash; });
+    const offInstall = window.desk.onLibraryInstall(hash => { noteInstall(hash).finally(() => { window.location.hash = hash; }); });
     return () => {
       window.removeEventListener('keydown', onKey, true);
       offFlush();
@@ -116,29 +105,32 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated 
   const label = { saved: 'Saved', saving: 'Saving...', unsaved: 'Unsaved', error: 'Not saved' }[status];
 
   return (
-    <Excalidraw
-      excalidrawAPI={setApi}
-      initialData={initialData}
-      theme={theme}
-      name={name || 'Untitled'}
-      UIOptions={UI}
-      onChange={onChange}
-      renderTopRightUI={() => file && (
-        <button className={`save-pill ${status}`} onClick={save} title="Saved to the file automatically. Ctrl+S saves now.">{label}</button>
-      )}
-    >
-      <MainMenu>
-        <MainMenu.DefaultItems.Export />
-        <MainMenu.DefaultItems.SaveAsImage />
-        <MainMenu.DefaultItems.SearchMenu />
-        <MainMenu.DefaultItems.Help />
-        <MainMenu.DefaultItems.ClearCanvas />
-        {file && <MainMenu.Separator />}
-        {file && <MainMenu.Item onSelect={() => window.desk.revealFile(file)}>Show in folder</MainMenu.Item>}
-        <MainMenu.Separator />
-        <MainMenu.DefaultItems.ToggleTheme />
-        <MainMenu.DefaultItems.ChangeCanvasBackground />
-      </MainMenu>
-    </Excalidraw>
+    <>
+      <LibrarySections theme={theme} />
+      <Excalidraw
+        excalidrawAPI={setApi}
+        initialData={initialData}
+        theme={theme}
+        name={name || 'Untitled'}
+        UIOptions={UI}
+        onChange={onChange}
+        renderTopRightUI={() => file && (
+          <button className={`save-pill ${status}`} onClick={save} title="Saved to the file automatically. Ctrl+S saves now.">{label}</button>
+        )}
+      >
+        <MainMenu>
+          <MainMenu.DefaultItems.Export />
+          <MainMenu.DefaultItems.SaveAsImage />
+          <MainMenu.DefaultItems.SearchMenu />
+          <MainMenu.DefaultItems.Help />
+          <MainMenu.DefaultItems.ClearCanvas />
+          {file && <MainMenu.Separator />}
+          {file && <MainMenu.Item onSelect={() => window.desk.revealFile(file)}>Show in folder</MainMenu.Item>}
+          <MainMenu.Separator />
+          <MainMenu.DefaultItems.ToggleTheme />
+          <MainMenu.DefaultItems.ChangeCanvasBackground />
+        </MainMenu>
+      </Excalidraw>
+    </>
   );
 }

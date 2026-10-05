@@ -227,10 +227,15 @@ await check('an item added to the library is stored', async () => {
 
 // Needs the internet: the library site is live. Skipped when it cannot be reached.
 const LIB = 'https://libraries.excalidraw.com/libraries/youritjang/software-architecture.excalidrawlib';
+const LIB2 = 'https://libraries.excalidraw.com/libraries/kaligule/robots.excalidrawlib';
 const online = await fetch(LIB, { method: 'HEAD' }).then(r => r.ok, () => false);
-if (online) await check('Browse libraries opens the site and "Add to Excalidraw" installs into the library', async () => {
-  await page.keyboard.press('Escape');
-  await page.locator('.sidebar-trigger').first().click();
+const libraryOpen = async () => {
+  if (!await page.getByText('Browse libraries').isVisible()) await page.locator('.sidebar-trigger').first().click();
+  await page.getByText('Browse libraries').waitFor();
+};
+// What the site's "Add to Excalidraw" button does: send the window back to the editor.
+const installFromSite = async lib => {
+  await libraryOpen();
   // The site hands back the token from this link; a different token makes Excalidraw ask first.
   const href = await page.getByText('Browse libraries').evaluate(a => a.closest('a').href);
   const token = new URL(href).searchParams.get('token');
@@ -239,14 +244,55 @@ if (online) await check('Browse libraries opens the site and "Add to Excalidraw"
   const child = await childP;
   await child.waitForURL(/libraries\.excalidraw\.com/, { timeout: 20000 });
   await child.waitForLoadState('load');
-  await shot(child, '08b-library-site');
-  // What the site's "Add to Excalidraw" button does: send the window back to the editor.
-  await child.evaluate(([lib, t]) => { location.href = `app://excalidesk/index.html#addLibrary=${encodeURIComponent(lib)}&token=${t}`; }, [LIB, token]).catch(() => {});
-  await page.waitForFunction(() => document.querySelectorAll('.library-unit').length >= 8, null, { timeout: 15000 });
+  await child.evaluate(([l, t]) => { location.href = `app://excalidesk/index.html#addLibrary=${encodeURIComponent(l)}&token=${t}`; }, [lib, token]).catch(() => {});
+  await page.waitForFunction(() => !location.hash.includes('addLibrary'), null, { timeout: 15000 });
+  await sleep(800);
   assert.equal((await app.windows()).length, 1, 'library window was not closed');
+};
+const section = name => page.locator('.ed-lib-section', { has: page.locator('.ed-lib-name', { hasText: new RegExp(`^${name}$`) }) });
+if (online) await check('two installed libraries show as two named sections that fold, and their items drag onto the canvas', async () => {
+  await page.keyboard.press('Escape');
+  await installFromSite(LIB);
+  await installFromSite(LIB2);
+  await libraryOpen();
+  await section('Software Architecture').waitFor();
+  await section('Robots').waitFor();
+  assert.equal(await page.locator('.ed-lib-section').count(), 2);
+  assert.equal(await page.locator('.library-menu-items-container__header--excal').isVisible(), false, 'the old single grid still shows');
+  assert.equal(await page.locator('.ed-lib-grid').count(), 0, 'sections should start folded');
+  await shot(page, '08b-library-sections-folded');
+  await section('Robots').locator('.ed-lib-head').click();
+  await section('Robots').locator('.ed-lib-item').first().waitFor();
+  await section('Software Architecture').locator('.ed-lib-head').click();
+  await section('Software Architecture').locator('.ed-lib-item').first().waitFor();
+  await section('Software Architecture').locator('.ed-lib-head').click();
+  assert.equal(await section('Software Architecture').locator('.ed-lib-item').count(), 0, 'did not fold');
+  await page.waitForFunction(() => document.querySelector('.ed-lib-item svg'));
+  await shot(page, '08c-library-sections-open');
+  const live = async () => (await readScene(plan)).elements.filter(e => !e.isDeleted).length;
+  await page.keyboard.press('Control+s');
+  await sleep(500);
+  const before = await live();
+  await section('Robots').locator('.ed-lib-item').first().dragTo(canvas(page), { targetPosition: { x: 300, y: 600 } });
+  await sleep(500);
+  await page.keyboard.press('Control+s');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  await sleep(300);
+  const afterDrag = await live();
+  assert.ok(afterDrag > before, `drag added nothing (${before} -> ${afterDrag})`);
+  // Like Excalidraw's own library, the panel closes once you work on the canvas.
+  await libraryOpen();
+  await section('Robots').locator('.ed-lib-item').first().click();
+  await sleep(500);
+  await page.keyboard.press('Control+s');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  await sleep(300);
+  assert.ok(await live() > afterDrag, 'click added nothing');
+  const ids = (await readScene(plan)).elements.map(e => e.id);
+  assert.equal(new Set(ids).size, ids.length, 'inserted elements share ids');
   const lib = JSON.parse(await fs.readFile(path.join(userData, 'library.excalidrawlib'), 'utf8'));
   assert.ok(lib.libraryItems.length >= 8);
-  await shot(page, '08b-library-installed');
+  await shot(page, '08d-library-dragged');
   await page.keyboard.press('Escape');
 });
 else console.log('SKIP library site install (offline)');
@@ -344,6 +390,11 @@ await check('attached folders, theme, always on top and library survive a restar
   await canvas(page).waitFor();
   await page.locator('.sidebar-trigger').first().click();
   await page.locator('.library-unit').first().waitFor({ timeout: 5000 });
+  if (online) {
+    // Robots was left open and Software Architecture folded.
+    await section('Robots').locator('.ed-lib-item').first().waitFor({ timeout: 5000 });
+    assert.equal(await section('Software Architecture').locator('.ed-lib-item').count(), 0, 'fold state not kept');
+  }
   await shot(page, '10-restart');
 });
 await app.close();
