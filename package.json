@@ -1,7 +1,7 @@
 {
   "name": "doodlebay",
   "productName": "Doodlebay",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A free, minimal desktop drawing app built on the open-source Excalidraw editor",
   "author": "Zaza Gejadze",
   "license": "MIT",

@@ -37,6 +37,18 @@ Excalidraw team.
 - **Opens .excalidraw files from Explorer:** double-click one and it opens in Doodlebay,
   in the window that is already open. A file outside your folders shows under
   **Opened file** and saves back to itself.
+- **Search all drawings:** the box at the top of the sidebar (or Ctrl+Shift+F) finds
+  words in text, frame names and file names across every attached folder and Drafts.
+  Click a result to open the drawing with the match in view. Text inside pasted images is
+  not searched.
+- **Version history:** Doodlebay keeps earlier saves of each drawing, at most one every five
+  minutes while you draw and one when you close it. Open **Version history** from the
+  drawing's menu to look at one and restore it; the drawing as it was is kept as a version
+  too. Every version from the last day is kept, then one a day for 30 days.
+- **Trash:** right-click a drawing in the sidebar and choose **Delete** to move it to the
+  **Trash** at the bottom of the sidebar. From there it can be restored where it was or
+  deleted for good. The Trash empties itself after 30 days. Files deleted in Explorer go to
+  the Windows Recycle Bin as usual.
 - **Library sections:** each library you add from "Browse libraries" gets its own named
   section that folds open and closed.
 - **Always on top:** the pin button at the top of the sidebar keeps the window above every
@@ -47,7 +59,8 @@ Excalidraw team.
 Doodlebay has no accounts, analytics or telemetry, and sends nothing about you or your
 drawings anywhere. It only goes online when you click **Browse libraries**: that opens the
 libraries.excalidraw.com website in its own window (the website has its own analytics),
-and adding a library downloads it from there.
+and adding a library downloads it from there. Search, version history and the Trash all
+work on this PC only.
 
 ## Build from source
 
@@ -69,7 +82,7 @@ trying a build.
 ## Tests
 
 ```
-npm test       # unit tests for the file handling
+npm test       # unit tests for file handling, search, version history and the Trash
 npm run e2e    # drives the real app (hidden) through every feature; screenshots in test/out/
 ```
 
@@ -87,13 +100,19 @@ One check installs libraries from libraries.excalidraw.com and is skipped when o
 | Attached folders, theme, always-on-top | `%APPDATA%\Doodlebay\settings.json` |
 | Your library | `%APPDATA%\Doodlebay\library.excalidrawlib` |
 | Drawings started with no folder attached | `%APPDATA%\Doodlebay\Drafts\` |
+| Earlier versions of your drawings | `%APPDATA%\Doodlebay\History\` |
+| Deleted drawings | `%APPDATA%\Doodlebay\Trash\` |
+
+The search index is kept in memory only and never written to disk.
 
 | Code | |
 | --- | --- |
-| `main.js` | the window, file access (only inside attached folders), folder watching, library site window, opening files from Explorer |
+| `main.js` | the window, file access (only inside attached folders), folder watching, search, version history and Trash, library site window, opening files from Explorer |
 | `preload.cjs` | the small bridge the page uses to reach `main.js` |
 | `lib/files.js` | file helpers (listing, safe names, atomic saves, settings) |
-| `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw, `LibrarySections.jsx` library sections |
+| `lib/search.js` | the search index over every attached drawing |
+| `lib/history.js` | version history and the Trash |
+| `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw, `LibrarySections.jsx` library sections, `VersionHistory.jsx` and `TrashSection.jsx` |
 | `vite.config.js` | builds `src/` into `dist-renderer/` and copies the editor's fonts so it works offline |
 | `build/make-icon.mjs` | draws `build/icon.png` |
 | `build/licenses.cjs` | writes `THIRD_PARTY_LICENSES.txt` |
