@@ -7,13 +7,17 @@ import Sidebar from './Sidebar.jsx';
 import Editor from './Editor.jsx';
 
 const fileName = p => (p.split(/[\\/]/).pop() || p).replace(/\.excalidraw$/i, '');
+const folderOf = p => p.replace(/[\\/][^\\/]*$/, '');
 
 function App({ initial }) {
   const [folders, setFolders] = useState(initial.folders);
   const [theme, setTheme] = useState(initial.theme);
   const [sidebar, setSidebar] = useState(initial.sidebar);
   const [onTop, setOnTop] = useState(initial.alwaysOnTop);
-  const [openFile, setOpenFile] = useState(null);
+  // key changes only when another drawing is opened, so the blank canvas turning into
+  // "Untitled N" keeps the same editor (and its undo history).
+  const [doc, setDoc] = useState({ key: 0, file: null });
+  const openFile = doc.file;
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -26,9 +30,19 @@ function App({ initial }) {
   const toggleOnTop = () => { setOnTop(!onTop); window.desk.setSettings({ alwaysOnTop: !onTop }); };
   const toggleSidebar = () => { setSidebar(!sidebar); window.desk.setSettings({ sidebar: !sidebar }); };
 
+  const remember = file => { if (!file.toLowerCase().startsWith(initial.drafts.toLowerCase())) window.desk.setSettings({ lastFolder: folderOf(file) }); };
+  const open = file => {
+    setDoc(d => (d.file === file ? d : { key: d.key + 1, file }));
+    remember(file);
+  };
+  const onCreated = useCallback(file => {
+    setDoc(d => ({ ...d, file }));
+    remember(file);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const attach = async () => setFolders(await window.desk.attachFolders());
   const detach = async root => {
-    if (openFile && openFile.toLowerCase().startsWith(root.toLowerCase())) setOpenFile(null);
+    if (openFile && openFile.toLowerCase().startsWith(root.toLowerCase())) setDoc(d => ({ key: d.key + 1, file: null }));
     setFolders(await window.desk.detachFolder(root));
   };
 
@@ -36,7 +50,7 @@ function App({ initial }) {
     <div className={`app ${sidebar ? '' : 'no-side'}`}>
       {sidebar && (
         <Sidebar
-          folders={folders} openFile={openFile} onOpen={setOpenFile}
+          folders={folders} drafts={initial.drafts} openFile={openFile} onOpen={open}
           onAttach={attach} onDetach={detach} onError={onError}
           header={(
             <button
@@ -52,15 +66,10 @@ function App({ initial }) {
         <button className="side-toggle" onClick={toggleSidebar} title={sidebar ? 'Hide the folders' : 'Show the folders'}>
           {sidebar ? '‹' : '›'}
         </button>
-        {openFile
-          ? <Editor key={openFile} file={openFile} name={fileName(openFile)} theme={theme} onTheme={pickTheme} onError={onError} />
-          : (
-            <div className="empty-stage">
-              <h1>ExcaliDesk</h1>
-              <p>{folders.length ? 'Pick a drawing on the left, or press + next to a folder to make a new one.' : 'Attach a folder to start.'}</p>
-              <p className="muted">A free desktop app built on the open-source Excalidraw editor. Your drawings stay as .excalidraw files in your own folders.</p>
-            </div>
-          )}
+        <Editor
+          key={doc.key} file={openFile} name={openFile ? fileName(openFile) : ''}
+          theme={theme} onTheme={pickTheme} onError={onError} onCreated={onCreated}
+        />
         {error && (
           <div className="toast" role="alert">
             <span>{error}</span>
@@ -72,6 +81,7 @@ function App({ initial }) {
   );
 }
 
-window.desk.getSettings().then(initial => {
+Promise.all([window.desk.getSettings(), window.desk.draftsDir()]).then(([settings, drafts]) => {
+  const initial = { ...settings, drafts };
   createRoot(document.getElementById('root')).render(<App initial={initial} />);
 });

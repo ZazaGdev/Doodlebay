@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { isInside, insideAny, listDir, cleanName, freePath, emptyScene, readJson, writeJson, writeAtomic } from '../lib/files.js';
+import { isInside, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, readJson, writeJson, writeAtomic } from '../lib/files.js';
 
 const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), 'excalidesk-'));
 
@@ -45,6 +45,14 @@ test('freePath never reuses an existing name', async () => {
   await fs.writeFile(path.join(dir, 'Plan.excalidraw'), '{}');
   assert.equal(await freePath(dir, 'Plan'), path.join(dir, 'Plan 2.excalidraw'));
   assert.equal(await freePath(dir, '  '), path.join(dir, 'Untitled.excalidraw'));
+});
+
+test('untitledPath counts Untitled 1, 2, 3 and fills gaps', async () => {
+  const dir = await tmp();
+  assert.equal(await untitledPath(dir), path.join(dir, 'Untitled 1.excalidraw'));
+  await fs.writeFile(path.join(dir, 'Untitled 1.excalidraw'), '{}');
+  await fs.writeFile(path.join(dir, 'Untitled 3.excalidraw'), '{}');
+  assert.equal(await untitledPath(dir), path.join(dir, 'Untitled 2.excalidraw'));
 });
 
 test('emptyScene is a valid empty Excalidraw file', () => {

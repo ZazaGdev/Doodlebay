@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { EXT, insideAny, listDir, freePath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
+import { EXT, insideAny, listDir, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
@@ -17,7 +17,9 @@ const LIBRARY_SITE = 'libraries.excalidraw.com';
 if (process.env.EXCALIDESK_USER_DATA) app.setPath('userData', process.env.EXCALIDESK_USER_DATA);
 const SETTINGS = () => path.join(app.getPath('userData'), 'settings.json');
 const LIBRARY = () => path.join(app.getPath('userData'), 'library.excalidrawlib');
-const DEFAULTS = { folders: [], theme: 'light', sidebar: true, alwaysOnTop: false };
+// Drawings started on the blank canvas while no folder is attached land here.
+const DRAFTS = () => path.join(app.getPath('userData'), 'Drafts');
+const DEFAULTS = { folders: [], theme: 'light', sidebar: true, alwaysOnTop: false, lastFolder: null };
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -43,7 +45,7 @@ async function saveSettings(patch) {
 // Every path the renderer sends is checked against the attached folders.
 function guard(p) {
   const full = path.resolve(String(p || ''));
-  if (!insideAny(settings.folders, full)) throw new Error('That file is not in an attached folder.');
+  if (!insideAny([...settings.folders, DRAFTS()], full)) throw new Error('That file is not in an attached folder.');
   return full;
 }
 
@@ -101,6 +103,21 @@ ipcMain.handle('file:create', async (_e, dir, name) => {
   await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
   return file;
 });
+// The blank canvas becomes "Untitled N" once something is drawn: in the folder last used
+// (or the first attached one), or in Drafts when no folder is attached.
+ipcMain.handle('file:untitled', async () => {
+  const last = settings.lastFolder;
+  let dir = last && insideAny(settings.folders, last) && fs.existsSync(last) ? last : settings.folders.find(f => fs.existsSync(f));
+  if (!dir) {
+    dir = DRAFTS();
+    await fsp.mkdir(dir, { recursive: true });
+    watch(dir);
+  }
+  const file = await untitledPath(dir);
+  await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
+  return file;
+});
+ipcMain.handle('drafts:dir', () => DRAFTS());
 ipcMain.handle('file:reveal', (_e, file) => shell.showItemInFolder(guard(file)));
 
 ipcMain.handle('library:load', () => fsp.readFile(LIBRARY(), 'utf8').catch(() => null));
@@ -177,6 +194,7 @@ app.whenReady().then(async () => {
   });
   settings = await readJson(SETTINGS(), DEFAULTS);
   settings.folders.forEach(watch);
+  if (fs.existsSync(DRAFTS())) watch(DRAFTS());
   createWindow();
 });
 

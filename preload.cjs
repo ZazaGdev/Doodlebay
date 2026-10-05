@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('desk', {
   readFile: file => ipcRenderer.invoke('file:read', file),
   writeFile: (file, text) => ipcRenderer.invoke('file:write', file, text),
   createFile: (dir, name) => ipcRenderer.invoke('file:create', dir, name),
+  createUntitled: () => ipcRenderer.invoke('file:untitled'),
+  draftsDir: () => ipcRenderer.invoke('drafts:dir'),
   revealFile: file => ipcRenderer.invoke('file:reveal', file),
   loadLibrary: () => ipcRenderer.invoke('library:load'),
   saveLibrary: text => ipcRenderer.invoke('library:save', text),

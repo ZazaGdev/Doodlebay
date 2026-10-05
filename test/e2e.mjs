@@ -50,7 +50,7 @@ const shot = (page, name) => (process.env.EXCALIDESK_EXE ? Promise.resolve() : p
 const row = (page, name) => page.locator('.tree-row', { has: page.locator('.tree-name', { hasText: new RegExp(`^${name}$`) }) });
 const canvas = page => page.locator('canvas.interactive');
 // Keyboard shortcuts only reach the editor once it has focus.
-const focusCanvas = page => canvas(page).click({ position: { x: 60, y: 700 } });
+const focusCanvas = page => canvas(page).click({ position: { x: 800, y: 650 } });
 
 let { app, page } = await launch();
 await page.setViewportSize?.({ width: 1400, height: 900 });
@@ -58,6 +58,36 @@ await page.setViewportSize?.({ width: 1400, height: 900 });
 await check('app starts with the empty sidebar', async () => {
   await page.getByText('Attach a folder to see its drawings here.').waitFor();
   await shot(page, '01-start');
+});
+
+const drawRect = async (x, y) => {
+  const box = await canvas(page).boundingBox();
+  await focusCanvas(page);
+  await page.keyboard.press('r');
+  await page.mouse.move(box.x + x, box.y + y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + x + 120, box.y + y + 80, { steps: 5 });
+  await page.mouse.up();
+  await page.keyboard.press('Escape');
+};
+
+await check('with no drawing open, a blank canvas is ready and drawing on it makes Untitled 1 in Drafts', async () => {
+  await canvas(page).waitFor();
+  assert.equal(await page.locator('.save-pill').count(), 0, 'blank canvas should not show a save state');
+  assert.equal(await row(page, 'Drafts').count(), 0, 'Drafts should be hidden while empty');
+  await drawRect(400, 300);
+  await row(page, 'Untitled 1').waitFor();
+  await row(page, 'Drafts').waitFor();
+  await page.waitForFunction(() => document.title === 'Untitled 1 - ExcaliDesk');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  const s = await readScene(path.join(userData, 'Drafts', 'Untitled 1.excalidraw'));
+  assert.equal(s.elements.filter(e => !e.isDeleted && e.type === 'rectangle').length, 1);
+  await drawRect(600, 300);
+  await page.keyboard.press('Control+s');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  const s2 = await readScene(path.join(userData, 'Drafts', 'Untitled 1.excalidraw'));
+  assert.equal(s2.elements.filter(e => !e.isDeleted && e.type === 'rectangle').length, 2, 'later strokes not saved');
+  await shot(page, '01b-blank-to-untitled');
 });
 
 await check('attaching a folder lists its drawings and subfolders', async () => {
@@ -288,6 +318,24 @@ await check('attached folders, theme, always on top and library survive a restar
   await page.locator('.sidebar-trigger').first().click();
   await page.locator('.library-unit').first().waitFor({ timeout: 5000 });
   await shot(page, '10-restart');
+});
+await app.close();
+
+({ app, page } = await launch());
+await check('after a restart the blank canvas saves as the next Untitled in the last used folder', async () => {
+  await canvas(page).waitFor();
+  await drawRect(400, 300);
+  await row(page, 'Untitled 1').first().waitFor();
+  const file = path.join(drawings, 'Untitled 1.excalidraw');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  assert.equal((await readScene(file)).elements.filter(e => !e.isDeleted).length, 1);
+  // Opening another drawing straight after a stroke keeps the stroke.
+  await drawRect(600, 300);
+  await row(page, 'Plan').click();
+  await page.waitForFunction(() => document.title === 'Plan - ExcaliDesk');
+  await sleep(500);
+  assert.equal((await readScene(file)).elements.filter(e => !e.isDeleted).length, 2, 'stroke lost when switching');
+  await shot(page, '11-untitled-in-folder');
 });
 await app.close();
 

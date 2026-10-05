@@ -1,6 +1,7 @@
 // The Excalidraw editor for one open drawing. It loads the file, saves it back a moment
 // after each change (and on Ctrl+S, file switch and window close), and keeps the shared
-// library in the app's own data folder.
+// library in the app's own data folder. With no file it is a blank canvas: the first
+// stroke turns it into "Untitled N" (see onCreated), and from then on it saves like any file.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Excalidraw, MainMenu, loadFromBlob, serializeAsJSON, serializeLibraryAsJSON,
@@ -29,8 +30,11 @@ const libraryAdapter = {
 const sceneKey = (elements, appState, files) =>
   `${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${Object.keys(files || {}).length}`;
 
-export default function Editor({ file, name, theme, onTheme, onError }) {
+export default function Editor({ file, name, theme, onTheme, onError, onCreated }) {
   const [api, setApi] = useState(null);
+  const fileRef = useRef(file);
+  fileRef.current = file;
+  const creating = useRef(false);
   const [status, setStatus] = useState('saved');
   const latest = useRef(null);
   const savedKey = useRef(null);
@@ -47,7 +51,7 @@ export default function Editor({ file, name, theme, onTheme, onError }) {
     for (const face of document.fonts) if (!/Xiaolai/i.test(face.family)) face.load().catch(() => {});
   }, [api]);
 
-  const [initialData] = useState(() => window.desk.readFile(file)
+  const [initialData] = useState(() => !file ? null : window.desk.readFile(file)
     .then(text => loadFromBlob(new Blob([text], { type: 'application/json' }), null, null))
     .then(scene => ({ ...scene, scrollToContent: true }))
     .catch(err => { onError(`Could not open ${name}: ${err.message}`); return null; }));
@@ -55,17 +59,18 @@ export default function Editor({ file, name, theme, onTheme, onError }) {
   const save = useCallback(async () => {
     clearTimeout(timer.current);
     const s = latest.current;
-    if (!s || s.key === savedKey.current) return;
+    const target = fileRef.current;
+    if (!target || !s || s.key === savedKey.current) return;
     setStatus('saving');
     try {
-      await window.desk.writeFile(file, serializeAsJSON(s.elements, s.appState, s.files, 'local'));
+      await window.desk.writeFile(target, serializeAsJSON(s.elements, s.appState, s.files, 'local'));
       savedKey.current = s.key;
       setStatus(latest.current.key === s.key ? 'saved' : 'unsaved');
     } catch (err) {
       setStatus('error');
       onError(`Could not save ${name}: ${err.message}`);
     }
-  }, [file, name, onError]);
+  }, [name, onError]);
 
   const onChange = (elements, appState, files) => {
     const key = sceneKey(elements, appState, files);
@@ -74,6 +79,15 @@ export default function Editor({ file, name, theme, onTheme, onError }) {
     latest.current = { elements, appState, files, key };
     if (appState.theme !== theme) onTheme(appState.theme);
     if (key === savedKey.current) return;
+    if (!fileRef.current) {
+      // Blank canvas: wait for something actually drawn, then make the file once.
+      if (creating.current || !elements.some(e => !e.isDeleted)) return;
+      creating.current = true;
+      window.desk.createUntitled()
+        .then(created => { fileRef.current = created; onCreated(created); return save(); })
+        .catch(err => { creating.current = false; onError(`Could not create the drawing: ${err.message}`); });
+      return;
+    }
     setStatus('unsaved');
     clearTimeout(timer.current);
     timer.current = setTimeout(save, SAVE_DELAY);
@@ -106,10 +120,10 @@ export default function Editor({ file, name, theme, onTheme, onError }) {
       excalidrawAPI={setApi}
       initialData={initialData}
       theme={theme}
-      name={name}
+      name={name || 'Untitled'}
       UIOptions={UI}
       onChange={onChange}
-      renderTopRightUI={() => (
+      renderTopRightUI={() => file && (
         <button className={`save-pill ${status}`} onClick={save} title="Saved to the file automatically. Ctrl+S saves now.">{label}</button>
       )}
     >
@@ -119,8 +133,8 @@ export default function Editor({ file, name, theme, onTheme, onError }) {
         <MainMenu.DefaultItems.SearchMenu />
         <MainMenu.DefaultItems.Help />
         <MainMenu.DefaultItems.ClearCanvas />
-        <MainMenu.Separator />
-        <MainMenu.Item onSelect={() => window.desk.revealFile(file)}>Show in folder</MainMenu.Item>
+        {file && <MainMenu.Separator />}
+        {file && <MainMenu.Item onSelect={() => window.desk.revealFile(file)}>Show in folder</MainMenu.Item>}
         <MainMenu.Separator />
         <MainMenu.DefaultItems.ToggleTheme />
         <MainMenu.DefaultItems.ChangeCanvasBackground />

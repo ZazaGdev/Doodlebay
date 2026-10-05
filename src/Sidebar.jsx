@@ -25,7 +25,7 @@ function NewDrawing({ onCreate, onCancel }) {
   );
 }
 
-export default function Sidebar({ folders, openFile, onOpen, onAttach, onDetach, onError, header }) {
+export default function Sidebar({ folders, drafts, openFile, onOpen, onAttach, onDetach, onError, header }) {
   const [children, setChildren] = useState({});
   const [expanded, setExpanded] = useState(() => {
     const s = loadExpanded();
@@ -55,7 +55,12 @@ export default function Sidebar({ folders, openFile, onOpen, onAttach, onDetach,
 
   useEffect(() => window.desk.onFoldersChanged(root => {
     expanded.forEach(dir => { if (isUnder(root, dir)) load(dir); });
-  }), [expanded, load]);
+    if (root === drafts) load(drafts);
+  }), [expanded, load, drafts]);
+
+  // Drawings started on the blank canvas with no folder attached. Shown only when there are some.
+  useEffect(() => { load(drafts); }, [drafts, load]);
+  const draftItems = Array.isArray(children[drafts]) ? children[drafts].filter(i => i.type === 'file') : [];
 
   const toggle = dir => setExpanded(s => {
     const next = new Set(s);
@@ -140,6 +145,23 @@ export default function Sidebar({ folders, openFile, onOpen, onAttach, onDetach,
             {expanded.has(root) && renderDir(root, 1)}
           </div>
         ))}
+        {draftItems.length > 0 && (
+          <div className="root">
+            <div className="tree-row root-row" title={`Not in an attached folder: ${drafts}`}>
+              <span className="caret" />
+              <span className="tree-name">Drafts</span>
+            </div>
+            {draftItems.map(item => (
+              <div
+                key={item.path} className={`tree-row file${item.path === openFile ? ' active' : ''}`} style={{ paddingLeft: 24 }}
+                onClick={() => onOpen(item.path)} title={item.path}
+              >
+                <span className="caret" />
+                <span className="tree-name">{item.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </aside>
   );
