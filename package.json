@@ -1,0 +1,60 @@
+{
+  "name": "excalidesk",
+  "productName": "ExcaliDesk",
+  "version": "0.1.0",
+  "description": "A free, minimal desktop drawing app built on the open-source Excalidraw editor",
+  "author": "Zaza Gejadze",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "build": "vite build",
+    "start": "npm run build && electron .",
+    "test": "node --test test/files.test.js",
+    "e2e": "npm run build && node test/e2e.mjs",
+    "pack": "npm run build && electron-builder --win dir",
+    "dist": "npm run build && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "playwright": "1.56.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "vite": "8.3.2"
+  },
+  "build": {
+    "appId": "com.zgejadze.excalidesk",
+    "productName": "ExcaliDesk",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.cjs",
+      "package.json",
+      "lib/**",
+      "dist-renderer/**",
+      "build/icon.png",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ExcaliDesk",
+      "artifactName": "ExcaliDesk-Setup-${version}.exe"
+    }
+  }
+}

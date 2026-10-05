@@ -1,0 +1,45 @@
+# Third-party notices
+
+ExcaliDesk is built on the open-source Excalidraw editor. It is not made by, endorsed by
+or connected to the Excalidraw team. "Excalidraw" and its logo belong to their owners and
+are not covered by the licence below; ExcaliDesk uses its own name and logo.
+
+## Excalidraw
+
+`@excalidraw/excalidraw` and `@excalidraw/mermaid-to-excalidraw`, https://github.com/excalidraw/excalidraw
+
+```
+MIT License
+
+Copyright (c) 2020 Excalidraw
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Fonts
+
+The fonts that ship with the editor (Excalifont, Virgil, Nunito, Lilita One, Comic
+Shanns, Cascadia Code, Liberation Sans, Xiaolai) come with the Excalidraw package under
+their own open licences (SIL Open Font License or similar). See the Excalidraw repository
+for each font's licence.
+
+## Other packages
+
+React, Electron and the rest of the dependencies in `package.json` are under their own
+open-source licences, listed in each package inside `node_modules`.
