@@ -1,4 +1,4 @@
-// Draws ExcaliDesk's own logo into build/icon.png (512 x 512): a folder with a pencil stroke
+// Draws Doodlebay's own logo into build/icon.png (512 x 512): a folder with a pencil stroke
 // across it. Run with `node build/make-icon.mjs`. No dependencies: it writes the PNG itself.
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';

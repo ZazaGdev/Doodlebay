@@ -46,9 +46,9 @@ const FONTS = [
 
 const rule = '='.repeat(78);
 const out = [
-  'Third-party software in ExcaliDesk',
+  'Third-party software in Doodlebay',
   '',
-  'ExcaliDesk bundles the packages and fonts below. Each is used under the licence shown.',
+  'Doodlebay bundles the packages and fonts below. Each is used under the licence shown.',
   'Electron and Chromium notices ship separately in the app folder (LICENSES.chromium.html).',
   '',
 ];

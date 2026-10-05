@@ -14,7 +14,7 @@ const out = path.join(root, 'test', 'out');
 await fs.rm(out, { recursive: true, force: true });
 await fs.mkdir(out, { recursive: true });
 
-const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'excalidesk-e2e-'));
+const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'doodlebay-e2e-'));
 const userData = path.join(tmp, 'user');
 const drawings = path.join(tmp, 'Drawings');
 await fs.mkdir(path.join(drawings, 'Sub'), { recursive: true });
@@ -36,9 +36,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const readScene = async f => JSON.parse(await fs.readFile(f, 'utf8'));
 
 async function launch(extra = []) {
-  // EXCALIDESK_EXE runs the checks against a packaged build, e.g. dist/win-unpacked/ExcaliDesk.exe.
-  const exe = process.env.EXCALIDESK_EXE;
-  const app = await electron.launch({ ...(exe ? { executablePath: exe, args: extra } : { args: [root, ...extra] }), env: { ...process.env, EXCALIDESK_HIDDEN: '1', EXCALIDESK_USER_DATA: userData } });
+  // DOODLEBAY_EXE runs the checks against a packaged build, e.g. dist/win-unpacked/Doodlebay.exe.
+  const exe = process.env.DOODLEBAY_EXE;
+  const app = await electron.launch({ ...(exe ? { executablePath: exe, args: extra } : { args: [root, ...extra] }), env: { ...process.env, DOODLEBAY_HIDDEN: '1', DOODLEBAY_USER_DATA: userData } });
   const page = await app.firstWindow();
   page.on('pageerror', e => console.log('  page error:', e.message));
   // Chromium reports the CDN font fallbacks as CSP errors even though the bundled fonts load.
@@ -47,7 +47,7 @@ async function launch(extra = []) {
   return { app, page };
 }
 // A hidden packaged window did not paint in testing, so screenshots are skipped for it.
-const shot = (page, name) => (process.env.EXCALIDESK_EXE ? Promise.resolve() : page.screenshot({ path: path.join(out, `${name}.png`) }));
+const shot = (page, name) => (process.env.DOODLEBAY_EXE ? Promise.resolve() : page.screenshot({ path: path.join(out, `${name}.png`) }));
 const row = (page, name) => page.locator('.tree-row', { has: page.locator('.tree-name', { hasText: new RegExp(`^${name}$`) }) });
 const canvas = page => page.locator('canvas.interactive');
 // Keyboard shortcuts only reach the editor once it has focus.
@@ -79,7 +79,7 @@ await check('with no drawing open, a blank canvas is ready and drawing on it mak
   await drawRect(400, 300);
   await row(page, 'Untitled 1').waitFor();
   await row(page, 'Drafts').waitFor();
-  await page.waitForFunction(() => document.title === 'Untitled 1 - ExcaliDesk');
+  await page.waitForFunction(() => document.title === 'Untitled 1 - Doodlebay');
   await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
   const s = await readScene(path.join(userData, 'Drafts', 'Untitled 1.excalidraw'));
   assert.equal(s.elements.filter(e => !e.isDeleted && e.type === 'rectangle').length, 1);
@@ -126,7 +126,7 @@ await check('drawing a rectangle, text and an image saves to the file', async ()
   await page.mouse.up();
   await page.keyboard.press('t');
   await page.mouse.click(...at(500, 520));
-  await page.keyboard.type('hello from ExcaliDesk');
+  await page.keyboard.type('hello from Doodlebay');
   await page.keyboard.press('Escape');
   // Drop a small PNG on the canvas, as a user dragging an image in would.
   await page.evaluate(async ([x, y]) => {
@@ -148,7 +148,7 @@ await check('drawing a rectangle, text and an image saves to the file', async ()
   const live = s.elements.filter(e => !e.isDeleted);
   const types = live.map(e => e.type).sort();
   assert.ok(types.filter(t => t === 'rectangle').length === 2, `types: ${types}`);
-  assert.ok(live.some(e => e.type === 'text' && e.text === 'hello from ExcaliDesk'), `types: ${types}`);
+  assert.ok(live.some(e => e.type === 'text' && e.text === 'hello from Doodlebay'), `types: ${types}`);
   assert.ok(types.includes('image'), `types: ${types}`);
   // Text measured before its font loads comes out too narrow and gets cut off.
   assert.ok(live.find(e => e.type === 'text').width > 200, 'text was measured with the wrong font');
@@ -244,7 +244,7 @@ const installFromSite = async lib => {
   const child = await childP;
   await child.waitForURL(/libraries\.excalidraw\.com/, { timeout: 20000 });
   await child.waitForLoadState('load');
-  await child.evaluate(([l, t]) => { location.href = `app://excalidesk/index.html#addLibrary=${encodeURIComponent(l)}&token=${t}`; }, [lib, token]).catch(() => {});
+  await child.evaluate(([l, t]) => { location.href = `app://doodlebay/index.html#addLibrary=${encodeURIComponent(l)}&token=${t}`; }, [lib, token]).catch(() => {});
   await page.waitForFunction(() => !location.hash.includes('addLibrary'), null, { timeout: 15000 });
   await sleep(800);
   assert.equal((await app.windows()).length, 1, 'library window was not closed');
@@ -304,7 +304,7 @@ await check('a new drawing can be made in an attached folder and its subfolder',
   await page.locator('.tree-input').fill('Fresh idea');
   await page.locator('.tree-input').press('Enter');
   await row(page, 'Fresh idea').waitFor();
-  await page.waitForFunction(() => document.title === 'Fresh idea - ExcaliDesk');
+  await page.waitForFunction(() => document.title === 'Fresh idea - Doodlebay');
   assert.equal((await readScene(path.join(drawings, 'Fresh idea.excalidraw'))).type, 'excalidraw');
   await row(page, 'Sub').hover();
   await row(page, 'Sub').getByTitle('New drawing in this folder').click();
@@ -337,7 +337,7 @@ await check('the new-drawing field creates the file on click-away, Enter still w
   await page.locator('.tree-input').fill('Clicked away');
   await canvas(page).click({ position: { x: 800, y: 650 } });
   await row(page, 'Clicked away').waitFor();
-  await page.waitForFunction(() => document.title === 'Clicked away - ExcaliDesk');
+  await page.waitForFunction(() => document.title === 'Clicked away - Doodlebay');
   await fs.access(path.join(drawings, 'Clicked away.excalidraw'));
   // The default name left alone, then a click elsewhere: the next free Untitled.
   await row(page, 'Drawings').hover();
@@ -404,8 +404,8 @@ await check('after a restart the blank canvas saves as the next Untitled in the 
   await canvas(page).waitFor();
   const existing = new Set(await fs.readdir(drawings));
   await drawRect(400, 300);
-  await page.waitForFunction(() => /^Untitled \d+ - ExcaliDesk$/.test(document.title));
-  const name = (await page.title()).replace(' - ExcaliDesk', '');
+  await page.waitForFunction(() => /^Untitled \d+ - Doodlebay$/.test(document.title));
+  const name = (await page.title()).replace(' - Doodlebay', '');
   const file = path.join(drawings, `${name}.excalidraw`);
   assert.ok(!existing.has(`${name}.excalidraw`), 'reused an existing name');
   await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
@@ -413,7 +413,7 @@ await check('after a restart the blank canvas saves as the next Untitled in the 
   // Opening another drawing straight after a stroke keeps the stroke.
   await drawRect(600, 300);
   await row(page, 'Plan').click();
-  await page.waitForFunction(() => document.title === 'Plan - ExcaliDesk');
+  await page.waitForFunction(() => document.title === 'Plan - Doodlebay');
   await sleep(500);
   assert.equal((await readScene(file)).elements.filter(e => !e.isDeleted).length, 2, 'stroke lost when switching');
   await shot(page, '11-untitled-in-folder');
@@ -429,7 +429,7 @@ await fs.writeFile(loose, scene([rect]));
 await fs.writeFile(loose2, scene([]));
 ({ app, page } = await launch([loose]));
 await check('a file passed on start opens on its own as an Opened file and saves back to itself', async () => {
-  await page.waitForFunction(() => document.title === 'Loose - ExcaliDesk');
+  await page.waitForFunction(() => document.title === 'Loose - Doodlebay');
   await row(page, 'Opened file').waitFor();
   await row(page, 'Loose').waitFor();
   assert.equal(await row(page, 'Elsewhere').count(), 0, 'its folder must not be attached');
@@ -442,12 +442,12 @@ await check('a file passed on start opens on its own as an Opened file and saves
 });
 
 await check('a second launch with a file opens it in the running window and exits', async () => {
-  const exe = process.env.EXCALIDESK_EXE || createRequire(import.meta.url)('electron');
-  const args = process.env.EXCALIDESK_EXE ? [loose2] : [root, loose2];
-  const second = spawn(exe, args, { env: { ...process.env, EXCALIDESK_HIDDEN: '1', EXCALIDESK_USER_DATA: userData }, stdio: 'ignore' });
+  const exe = process.env.DOODLEBAY_EXE || createRequire(import.meta.url)('electron');
+  const args = process.env.DOODLEBAY_EXE ? [loose2] : [root, loose2];
+  const second = spawn(exe, args, { env: { ...process.env, DOODLEBAY_HIDDEN: '1', DOODLEBAY_USER_DATA: userData }, stdio: 'ignore' });
   const code = await new Promise((res, rej) => { second.on('exit', res); setTimeout(() => rej(new Error('second copy kept running')), 20000); });
   assert.equal(code, 0);
-  await page.waitForFunction(() => document.title === 'Second - ExcaliDesk', null, { timeout: 10000 });
+  await page.waitForFunction(() => document.title === 'Second - Doodlebay', null, { timeout: 10000 });
   await row(page, 'Second').waitFor();
   await row(page, 'Loose').waitFor();
   assert.equal((await app.windows()).length, 1);

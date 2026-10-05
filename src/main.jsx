@@ -25,7 +25,7 @@ function App({ initial }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    document.title = openFile ? `${fileName(openFile)} - ExcaliDesk` : 'ExcaliDesk';
+    document.title = openFile ? `${fileName(openFile)} - Doodlebay` : 'Doodlebay';
   }, [theme, openFile]);
 
   const onError = useCallback(msg => setError(msg), []);

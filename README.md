@@ -1,23 +1,23 @@
-# ExcaliDesk
+# Doodlebay
 
 A free, minimal Windows desktop drawing app built on the open-source [Excalidraw](https://github.com/excalidraw/excalidraw) editor.
 
 ## Download and install
 
-1. Open the [latest release](https://github.com/ZazaGdev/ExcaliDesk/releases/latest).
-2. Under **Assets**, download `ExcaliDesk-Setup-<version>.exe`.
+1. Open the [latest release](https://github.com/ZazaGdev/Doodlebay/releases/latest).
+2. Under **Assets**, download `Doodlebay-Setup-<version>.exe`.
 3. Run it and follow the installer.
 4. If Windows shows "Windows protected your PC", click **More info**, then **Run anyway**.
    The installer is not code-signed, which is why Windows warns.
 
 ## What it is
 
-ExcaliDesk puts the Excalidraw whiteboard in a desktop window, next to a sidebar of your own
+Doodlebay puts the Excalidraw whiteboard in a desktop window, next to a sidebar of your own
 folders. Your drawings stay as ordinary `.excalidraw` files on your disk. No account, no
 cloud, no subscription. Files made here open on excalidraw.com and in any other Excalidraw
 app, and the other way round.
 
-ExcaliDesk is an independent project. It is not made by, endorsed by or connected to the
+Doodlebay is an independent project. It is not made by, endorsed by or connected to the
 Excalidraw team.
 
 ## Features
@@ -34,7 +34,7 @@ Excalidraw team.
 - **Blank canvas to start:** with no drawing open you can draw straight away. The first
   stroke saves it as "Untitled 1" (then 2, 3...) in the folder you used last, or under
   **Drafts** in the sidebar when no folder is attached.
-- **Opens .excalidraw files from Explorer:** double-click one and it opens in ExcaliDesk,
+- **Opens .excalidraw files from Explorer:** double-click one and it opens in Doodlebay,
   in the window that is already open. A file outside your folders shows under
   **Opened file** and saves back to itself.
 - **Library sections:** each library you add from "Browse libraries" gets its own named
@@ -44,7 +44,7 @@ Excalidraw team.
 
 ## Privacy
 
-ExcaliDesk has no accounts, analytics or telemetry, and sends nothing about you or your
+Doodlebay has no accounts, analytics or telemetry, and sends nothing about you or your
 drawings anywhere. It only goes online when you click **Browse libraries**: that opens the
 libraries.excalidraw.com website in its own window (the website has its own analytics),
 and adding a library downloads it from there.
@@ -54,15 +54,15 @@ and adding a library downloads it from there.
 You need Windows and [Node.js](https://nodejs.org) 20 or newer (22 is what it is built with).
 
 ```
-git clone https://github.com/ZazaGdev/ExcaliDesk.git
-cd ExcaliDesk
+git clone https://github.com/ZazaGdev/Doodlebay.git
+cd Doodlebay
 npm install
 npm start
 ```
 
 `npm start` builds the editor page and opens the app.
 
-`npm run dist` writes the installer to `dist/ExcaliDesk-Setup-<version>.exe`.
+`npm run dist` writes the installer to `dist/Doodlebay-Setup-<version>.exe`.
 `npm run pack` makes an unpacked app in `dist/win-unpacked/` instead, which is quicker for
 trying a build.
 
@@ -73,8 +73,8 @@ npm test       # unit tests for the file handling
 npm run e2e    # drives the real app (hidden) through every feature; screenshots in test/out/
 ```
 
-To run the same checks against a packaged build, set `EXCALIDESK_EXE` to
-`dist/win-unpacked/ExcaliDesk.exe` before `node test/e2e.mjs`.
+To run the same checks against a packaged build, set `DOODLEBAY_EXE` to
+`dist/win-unpacked/Doodlebay.exe` before `node test/e2e.mjs`.
 
 The end-to-end run uses temporary folders, so it never touches your drawings or settings.
 One check installs libraries from libraries.excalidraw.com and is skipped when offline.
@@ -84,9 +84,9 @@ One check installs libraries from libraries.excalidraw.com and is skipped when o
 | What | Where |
 | --- | --- |
 | Your drawings | wherever they already are, in the folders you attach |
-| Attached folders, theme, always-on-top | `%APPDATA%\ExcaliDesk\settings.json` |
-| Your library | `%APPDATA%\ExcaliDesk\library.excalidrawlib` |
-| Drawings started with no folder attached | `%APPDATA%\ExcaliDesk\Drafts\` |
+| Attached folders, theme, always-on-top | `%APPDATA%\Doodlebay\settings.json` |
+| Your library | `%APPDATA%\Doodlebay\library.excalidrawlib` |
+| Drawings started with no folder attached | `%APPDATA%\Doodlebay\Drafts\` |
 
 | Code | |
 | --- | --- |
@@ -106,10 +106,10 @@ text-to-diagram works offline and is included.
 
 ## Licence and credit
 
-ExcaliDesk is MIT licensed, see [LICENSE](LICENSE).
+Doodlebay is MIT licensed, see [LICENSE](LICENSE).
 
 It is built on [Excalidraw](https://github.com/excalidraw/excalidraw), also MIT licensed.
 Excalidraw's notice is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and every other
 bundled package and font is listed with its licence in
 [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt). The Excalidraw name and logo belong to
-their owners; ExcaliDesk uses its own logo.
+their owners; Doodlebay uses its own logo.

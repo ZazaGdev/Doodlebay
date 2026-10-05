@@ -1,7 +1,7 @@
 // One foldable section per installed library in Excalidraw's library panel. Excalidraw keeps
 // every installed item in a single "Excalidraw Library" grid, so this hides that grid and
 // shows the same items grouped by the library they came from. The items themselves stay
-// in Excalidraw's library; ExcaliDesk only remembers which library each one came from.
+// in Excalidraw's library; Doodlebay only remembers which library each one came from.
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { exportToSvg, serializeLibraryAsJSON, MIME_TYPES } from '@excalidraw/excalidraw';
@@ -55,7 +55,8 @@ export const libraryAdapter = {
     try {
       const data = JSON.parse(text);
       const list = data.libraryItems || data.library || [];
-      sources = data.excalidesk?.sources || {};
+      // Libraries saved before the rename to Doodlebay keep their sections under the old key.
+      sources = data.doodlebay?.sources || data.excalidesk?.sources || {};
       items = list;
       known = new Set(list.map(i => i.id));
       emit();
@@ -75,7 +76,7 @@ export const libraryAdapter = {
     items = libraryItems;
     emit();
     const data = JSON.parse(serializeLibraryAsJSON(libraryItems));
-    data.excalidesk = { sources };
+    data.doodlebay = { sources };
     return window.desk.saveLibrary(JSON.stringify(data, null, 2));
   },
 };

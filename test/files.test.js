@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { isInside, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, readJson, writeJson, writeAtomic } from '../lib/files.js';
 
-const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), 'excalidesk-'));
+const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), 'doodlebay-'));
 
 test('isInside accepts the root and its children only', () => {
   assert.equal(isInside('C:\\a\\b', 'C:\\a\\b'), true);

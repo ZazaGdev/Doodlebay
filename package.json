@@ -1,7 +1,7 @@
 {
-  "name": "excalidesk",
-  "productName": "ExcaliDesk",
-  "version": "0.1.0",
+  "name": "doodlebay",
+  "productName": "Doodlebay",
+  "version": "0.2.0",
   "description": "A free, minimal desktop drawing app built on the open-source Excalidraw editor",
   "author": "Zaza Gejadze",
   "license": "MIT",
@@ -28,8 +28,8 @@
     "vite": "8.3.2"
   },
   "build": {
-    "appId": "com.zgejadze.excalidesk",
-    "productName": "ExcaliDesk",
+    "appId": "com.zgejadze.doodlebay",
+    "productName": "Doodlebay",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -48,8 +48,8 @@
     "fileAssociations": [
       {
         "ext": "excalidraw",
-        "name": "ExcaliDesk.Drawing",
-        "description": "Excalidraw drawing",
+        "name": "Doodlebay.Drawing",
+        "description": "Drawing (.excalidraw)",
         "role": "Editor"
       }
     ],
@@ -63,8 +63,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ExcaliDesk",
-      "artifactName": "ExcaliDesk-Setup-${version}.exe"
+      "shortcutName": "Doodlebay",
+      "artifactName": "Doodlebay-Setup-${version}.exe"
     }
   }
 }

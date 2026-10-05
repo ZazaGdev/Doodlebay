@@ -1,4 +1,4 @@
-// ExcaliDesk main process: the window, the app:// protocol that serves the built editor,
+// Doodlebay main process: the window, the app:// protocol that serves the built editor,
 // and the file access the sidebar and editor ask for. The renderer can only read and write
 // inside folders the user attached, and attaching a folder never changes anything in it.
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron';
@@ -10,11 +10,11 @@ import { EXT, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene,
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
-const ORIGIN = 'app://excalidesk';
+const ORIGIN = 'app://doodlebay';
 const LIBRARY_SITE = 'libraries.excalidraw.com';
 
 // Tests point this at a temp folder so they never touch the real settings.
-if (process.env.EXCALIDESK_USER_DATA) app.setPath('userData', process.env.EXCALIDESK_USER_DATA);
+if (process.env.DOODLEBAY_USER_DATA) app.setPath('userData', process.env.DOODLEBAY_USER_DATA);
 const SETTINGS = () => path.join(app.getPath('userData'), 'settings.json');
 const LIBRARY = () => path.join(app.getPath('userData'), 'library.excalidrawlib');
 // Drawings started on the blank canvas while no folder is attached land here.
@@ -80,7 +80,7 @@ if (!firstCopy) {
     openExternal(fileFromArgs(argv));
     if (win) {
       if (win.isMinimized()) win.restore();
-      if (!process.env.EXCALIDESK_HIDDEN) win.show();
+      if (!process.env.DOODLEBAY_HIDDEN) win.show();
       win.focus();
     }
   });
@@ -192,10 +192,10 @@ function openLibrarySite(url) {
 function createWindow() {
   win = new BrowserWindow({
     width: 1400, height: 900, minWidth: 720, minHeight: 480,
-    title: 'ExcaliDesk', icon: path.join(here, 'build', 'icon.png'),
+    title: 'Doodlebay', icon: path.join(here, 'build', 'icon.png'),
     autoHideMenuBar: true,
     backgroundColor: settings.theme === 'dark' ? '#121212' : '#ffffff',
-    show: !process.env.EXCALIDESK_HIDDEN,
+    show: !process.env.DOODLEBAY_HIDDEN,
     webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, sandbox: true },
   });
   win.setMenuBarVisibility(false);

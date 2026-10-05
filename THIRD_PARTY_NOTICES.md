@@ -1,8 +1,8 @@
 # Third-party notices
 
-ExcaliDesk is built on the open-source Excalidraw editor. It is not made by, endorsed by
+Doodlebay is built on the open-source Excalidraw editor. It is not made by, endorsed by
 or connected to the Excalidraw team. "Excalidraw" and its logo belong to their owners and
-are not covered by the licence below; ExcaliDesk uses its own name and logo.
+are not covered by the licence below; Doodlebay uses its own name and logo.
 
 ## Excalidraw
 

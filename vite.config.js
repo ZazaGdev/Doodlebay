@@ -1,4 +1,4 @@
-// Builds the editor page from src/ into dist-renderer/, which main.js serves as app://excalidesk.
+// Builds the editor page from src/ into dist-renderer/, which main.js serves as app://doodlebay.
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { cpSync, existsSync } from 'node:fs';

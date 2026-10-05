@@ -124,7 +124,7 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
   return (
     <aside className="sidebar">
       <div className="side-head">
-        <span className="brand">ExcaliDesk</span>
+        <span className="brand">Doodlebay</span>
         <span className="spacer" />
         {header}
         <button className="head-btn" onClick={onAttach} title="Attach folders">+ Folder</button>
