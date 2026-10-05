@@ -198,3 +198,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ed-lib-item:hover { border-color: var(--accent); }
 .ed-lib-preview, .ed-lib-preview svg { width: 100%; height: 100%; }
 .ed-lib-preview svg { padding: 6px; box-sizing: border-box; }
+
+/* The pulsing "+" Excalidraw shows for the current selection is never shown; right-click
+   "Add to library" still adds it. An empty library shows Browse libraries at the top
+   (LibrarySections.jsx) in place of Excalidraw's own link further down. */
+.layer-ui__library .library-unit:has(.library-unit__adder) { display: none; }
+.ed-lib-empty .layer-ui__library .library-menu-browse-button { display: none; }
+.ed-lib-cta-host { width: 100%; }
+.ed-lib-browse {
+  width: 100%;
+  height: var(--lg-button-size, 2.25rem);
+  margin: 4px 0 12px;
+  border: 0;
+  border-radius: var(--border-radius-lg, 8px);
+  background: var(--color-primary, var(--accent));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ed-lib-browse:hover { background: var(--color-brand-hover, var(--color-primary)); }
+/* Leaves room for the library's menu button when Excalidraw puts it in the top corner. */
+.library-menu-items-container:has(.library-menu-dropdown-container--in-heading) .ed-lib-browse { width: calc(100% - 48px); }

@@ -153,19 +153,27 @@ function Sections({ theme }) {
   );
 }
 
-// Finds Excalidraw's "Excalidraw Library" heading whenever the panel is open and puts the
-// sections in front of it; the heading and its grid are hidden by app.css.
-export default function LibrarySections({ theme }) {
+// The empty library's call to action. It clicks Excalidraw's own Browse libraries link,
+// which app.css hides while the library is empty, so the site opens exactly as before.
+function BrowseCta() {
+  const browse = () => document.querySelector('.layer-ui__library .library-menu-browse-button')?.click();
+  return <button className="ed-lib-browse" onClick={browse}>Browse libraries</button>;
+}
+
+// Puts a host div in front of `anchor` (or as the first child of `parent`) whenever the
+// panel is open, and drops it when the panel closes.
+function useHost(className, find) {
   const [host, setHost] = useState(null);
   useEffect(() => {
     const place = () => {
-      const head = document.querySelector('.library-menu-items-container__header--excal');
-      if (!head) { setHost(null); return; }
-      let el = head.previousElementSibling;
-      if (!el || !el.classList.contains('ed-libs-host')) {
+      const spot = find();
+      if (!spot) { setHost(null); return; }
+      const [parent, before] = spot;
+      let el = before ? before.previousElementSibling : parent.firstElementChild;
+      if (!el || !el.classList.contains(className)) {
         el = document.createElement('div');
-        el.className = 'ed-libs-host';
-        head.parentNode.insertBefore(el, head);
+        el.className = className;
+        parent.insertBefore(el, before || parent.firstChild);
       }
       setHost(h => (h === el ? h : el));
     };
@@ -173,6 +181,34 @@ export default function LibrarySections({ theme }) {
     const obs = new MutationObserver(place);
     obs.observe(document.body, { childList: true, subtree: true });
     return () => obs.disconnect();
-  }, []);
-  return host ? createPortal(<Sections theme={theme} />, host) : null;
+  }, [className, find]);
+  return host;
+}
+
+// Finds Excalidraw's "Excalidraw Library" heading whenever the panel is open and puts the
+// sections in front of it; the heading and its grid are hidden by app.css.
+const findSections = () => {
+  const head = document.querySelector('.library-menu-items-container__header--excal');
+  return head && [head.parentNode, head];
+};
+const findNothing = () => null;
+const findTop = () => {
+  const box = document.querySelector('.layer-ui__library .library-menu-items-container');
+  return box && [box, null];
+};
+
+export default function LibrarySections({ theme }) {
+  const { items: all } = useSyncExternalStore(subscribe, () => snapshot);
+  const empty = all.length === 0;
+  useEffect(() => {
+    document.body.classList.toggle('ed-lib-empty', empty);
+  }, [empty]);
+  const host = useHost('ed-libs-host', findSections);
+  const top = useHost('ed-lib-cta-host', empty ? findTop : findNothing);
+  return (
+    <>
+      {host && createPortal(<Sections theme={theme} />, host)}
+      {top && createPortal(<BrowseCta />, top)}
+    </>
+  );
 }

@@ -210,6 +210,29 @@ await check('Mermaid text-to-diagram makes elements', async () => {
   await page.keyboard.press('Escape');
 });
 
+await check('an empty library shows Browse libraries at the top and no pulsing +', async () => {
+  // A selected shape is what makes Excalidraw show its pulsing "+".
+  await focusCanvas(page);
+  const box = await canvas(page).boundingBox();
+  await page.mouse.click(box.x + 515, box.y + 530);
+  await page.locator('.sidebar-trigger').first().click();
+  const cta = page.locator('.ed-lib-browse');
+  await cta.waitFor();
+  assert.equal(await page.locator('.library-unit__adder').isVisible(), false, 'the pulsing + still shows');
+  const top = await page.evaluate(() => document.querySelector('.layer-ui__library .library-menu-items-container').firstElementChild.className);
+  assert.equal(top, 'ed-lib-cta-host', 'the button is not at the top of the panel');
+  assert.equal(await page.locator('.library-menu-browse-button').first().isVisible(), false, 'two Browse libraries links show');
+  await shot(page, '08-library-empty');
+  const childP = app.waitForEvent('window');
+  await cta.click();
+  const child = await childP;
+  // Offline the site cannot load, so check where the window was sent instead.
+  const href = await page.locator('.library-menu-browse-button').first().evaluate(a => a.href);
+  assert.match(href, /^https:\/\/libraries\.excalidraw\.com\//);
+  await child.close();
+  await page.keyboard.press('Escape');
+});
+
 await check('an item added to the library is stored', async () => {
   // Excalidraw does not put images in the library yet, so add the text on its own.
   await focusCanvas(page);
@@ -222,6 +245,9 @@ await check('an item added to the library is stored', async () => {
   await sleep(1000);
   const lib = JSON.parse(await fs.readFile(path.join(userData, 'library.excalidrawlib'), 'utf8'));
   assert.equal(lib.libraryItems.length, 1);
+  if (!await page.locator('.layer-ui__library').isVisible()) await page.locator('.sidebar-trigger').first().click();
+  await page.locator('.library-menu-browse-button').first().waitFor();
+  assert.equal(await page.locator('.ed-lib-browse').count(), 0, 'the empty-library button still shows');
   await shot(page, '08-library');
 });
 
