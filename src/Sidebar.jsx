@@ -72,7 +72,7 @@ function RowMenu({ menu, onDelete, onDismiss }) {
   );
 }
 
-export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header, searchAt, onClose }) {
+export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header, searchAt, onClose, newTarget }) {
   const [menu, setMenu] = useState(null);
   const [trashAt, setTrashAt] = useState(0);
   const dismiss = useCallback(() => setMenu(null), []);
@@ -142,8 +142,18 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
     return next;
   });
 
+  // Opens the folder and every folder above it, so the name field can be seen.
   const startNew = dir => {
-    setExpanded(s => new Set(s).add(dir));
+    setExpanded(s => {
+      const next = new Set(s);
+      const root = folders.find(f => isUnder(f, dir));
+      for (let d = dir; root && isUnder(root, d); d = d.replace(/[\\/][^\\/]*$/, '')) {
+        next.add(d);
+        if (d.toLowerCase() === root.toLowerCase()) break;
+      }
+      next.add(dir);
+      return next;
+    });
     setCreatingIn(dir);
   };
 
@@ -213,6 +223,7 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
         </div>
       ) : (
       <div className="tree">
+        <button className="primary add-new" onClick={() => startNew(newTarget)} title={`New drawing in ${baseName(newTarget)}`}>+ Add new</button>
         {opened.length > 0 && (
           <div className="root">
             <div className="tree-row root-row" title="Opened from Explorer; their folders are not attached">
@@ -248,12 +259,17 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
             {expanded.has(root) && renderDir(root, 1)}
           </div>
         ))}
-        {draftItems.length > 0 && (
+        {(draftItems.length > 0 || creatingIn === drafts) && (
           <div className="root">
             <div className="tree-row root-row" title={`Not in an attached folder: ${drafts}`}>
               <span className="caret" />
               <span className="tree-name">Drafts</span>
             </div>
+            {creatingIn === drafts && (
+              <div className="tree-row" style={{ paddingLeft: 24 }}>
+                <NewDrawing onCreate={name => create(drafts, name)} onCancel={() => setCreatingIn(null)} />
+              </div>
+            )}
             {draftItems.map(item => (
               <div
                 key={item.path} className={`tree-row file${item.path === openFile ? ' active' : ''}`} style={{ paddingLeft: 24 }}

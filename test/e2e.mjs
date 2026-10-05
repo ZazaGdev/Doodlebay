@@ -91,6 +91,16 @@ await check('with no drawing open, a blank canvas is ready and drawing on it mak
   await shot(page, '01b-blank-to-untitled');
 });
 
+await check('Add new with no folder attached makes the drawing in Drafts', async () => {
+  await page.getByRole('button', { name: '+ Add new' }).click();
+  const field = page.getByLabel('New drawing name');
+  await field.fill('Draft note');
+  await field.press('Enter');
+  await row(page, 'Draft note').waitFor({ timeout: 5000 });
+  await page.waitForFunction(() => document.title.startsWith('Draft note'));
+  await fs.access(path.join(userData, 'Drafts', 'Draft note.excalidraw'));
+});
+
 await check('attaching a folder lists its drawings and subfolders', async () => {
   await app.evaluate(({ dialog }, dir) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [dir] }); }, drawings);
   await page.getByRole('button', { name: 'Attach a folder' }).click();
@@ -322,6 +332,19 @@ if (online) await check('two installed libraries show as two named sections that
   await page.keyboard.press('Escape');
 });
 else console.log('SKIP library site install (offline)');
+
+await check('Add new at the top of the folder list makes a drawing in the folder used last', async () => {
+  await row(page, 'Inside').click();
+  await page.waitForFunction(() => document.title.startsWith('Inside'));
+  await page.getByRole('button', { name: '+ Add new' }).click();
+  const field = page.getByLabel('New drawing name');
+  await field.fill('From the button');
+  await shot(page, '15-add-new');
+  await field.press('Enter');
+  await page.waitForFunction(() => document.title.startsWith('From the button'));
+  await fs.access(path.join(drawings, 'Sub', 'From the button.excalidraw'));
+  assert.equal(await page.locator('.toast').count(), 0, 'an error showed');
+});
 
 await check('a new drawing can be made in an attached folder and its subfolder', async () => {
   await page.keyboard.press('Escape');

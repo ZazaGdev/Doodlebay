@@ -33,7 +33,16 @@ function App({ initial }) {
   const toggleOnTop = () => { setOnTop(!onTop); window.desk.setSettings({ alwaysOnTop: !onTop }); };
   const toggleSidebar = () => { setSidebar(!sidebar); window.desk.setSettings({ sidebar: !sidebar }); };
 
-  const remember = file => { if (!file.toLowerCase().startsWith(initial.drafts.toLowerCase())) window.desk.setSettings({ lastFolder: folderOf(file) }); };
+  const [lastFolder, setLastFolder] = useState(initial.lastFolder);
+  const remember = file => {
+    if (file.toLowerCase().startsWith(initial.drafts.toLowerCase())) return;
+    setLastFolder(folderOf(file));
+    window.desk.setSettings({ lastFolder: folderOf(file) });
+  };
+  // Where "Add new" puts a drawing: the folder used last, like the blank canvas, else the
+  // first attached folder, else Drafts.
+  const inFolders = dir => dir && folders.some(f => f.toLowerCase() === dir.toLowerCase() || under(f, dir));
+  const newTarget = inFolders(lastFolder) ? lastFolder : folders[0] || initial.drafts;
   // focusId, from a search result, is the element to bring into view once the drawing is open.
   const open = (file, focusId = null) => {
     const focus = focusId ? { id: focusId, at: Date.now() } : null;
@@ -90,7 +99,7 @@ function App({ initial }) {
     <div className={`app ${sidebar ? '' : 'no-side'}`}>
       {sidebar && (
         <Sidebar
-          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open} searchAt={searchAt} onClose={closeIfOpen}
+          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open} searchAt={searchAt} onClose={closeIfOpen} newTarget={newTarget}
           onAttach={attach} onDetach={detach} onError={onError}
           header={(
             <button

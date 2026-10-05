@@ -156,13 +156,21 @@ ipcMain.handle('dir:list', async (_e, dir) => {
 });
 
 ipcMain.handle('file:read', (_e, file) => fsp.readFile(guard(file), 'utf8'));
-ipcMain.handle('file:write', async (_e, file, text) => {
+// Saves of one file run one after another: two at once would share a temp file.
+const writing = new Map();
+ipcMain.handle('file:write', (_e, file, text) => {
   const full = guard(file);
   if (!full.toLowerCase().endsWith(EXT)) throw new Error('Only .excalidraw files are saved.');
-  if (trashed.has(full.toLowerCase())) return;
-  // Keeps what was there as a version first, at most every five minutes.
-  await history.snapshot(full).catch(() => {});
-  return writeAtomic(full, text);
+  const key = full.toLowerCase();
+  const run = (writing.get(key) || Promise.resolve()).catch(() => {}).then(async () => {
+    if (trashed.has(key)) return;
+    // Keeps what was there as a version first, at most every five minutes.
+    await history.snapshot(full).catch(() => {});
+    await writeAtomic(full, text);
+  });
+  writing.set(key, run);
+  run.finally(() => { if (writing.get(key) === run) writing.delete(key); }).catch(() => {});
+  return run;
 });
 // Called when a drawing is closed or switched away from: keep its last state as a version.
 ipcMain.handle('history:checkpoint', (_e, file) => history.snapshot(guard(file), { force: true }).catch(() => null));
@@ -190,6 +198,11 @@ ipcMain.handle('trash:restore', async (_e, id) => {
 ipcMain.handle('trash:remove', (_e, id) => trash.remove(id));
 // Left as "Untitled" (or blank), a new drawing is numbered like the blank canvas: Untitled 1, 2...
 ipcMain.handle('file:create', async (_e, dir, name) => {
+  // "Add new" with no folder attached makes the drawing in Drafts, which may not exist yet.
+  if (path.resolve(String(dir || '')).toLowerCase() === DRAFTS().toLowerCase()) {
+    await fsp.mkdir(DRAFTS(), { recursive: true });
+    watch(DRAFTS());
+  }
   const base = cleanName(name);
   const file = !base || base.toLowerCase() === 'untitled' ? await untitledPath(guard(dir)) : await freePath(guard(dir), base);
   await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
