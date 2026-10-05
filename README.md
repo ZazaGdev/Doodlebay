@@ -30,7 +30,8 @@ Excalidraw team.
   Attaching a folder never moves or changes anything in it.
 - **Saves to the file:** a drawing saves back to its own `.excalidraw` file a moment after
   each change, and on Ctrl+S. The status button at the top right says whether it is saved.
-- **New drawings:** hover a folder in the sidebar and press **+**.
+- **New drawings:** press **+ Add new** at the top of the folder list (it uses the folder
+  you used last, or Drafts when no folder is attached), or hover a folder and press **+**.
 - **Blank canvas to start:** with no drawing open you can draw straight away. The first
   stroke saves it as "Untitled 1" (then 2, 3...) in the folder you used last, or under
   **Drafts** in the sidebar when no folder is attached.
