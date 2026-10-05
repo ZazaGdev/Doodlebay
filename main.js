@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXT, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
 import { SearchIndex } from './lib/search.js';
+import { History, Trash } from './lib/history.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
@@ -20,6 +21,12 @@ const SETTINGS = () => path.join(app.getPath('userData'), 'settings.json');
 const LIBRARY = () => path.join(app.getPath('userData'), 'library.excalidrawlib');
 // Drawings started on the blank canvas while no folder is attached land here.
 const DRAFTS = () => path.join(app.getPath('userData'), 'Drafts');
+// Earlier saves of each drawing, and deleted drawings, kept here and never in the user's folders.
+const history = new History(path.join(app.getPath('userData'), 'History'));
+const trash = new Trash(path.join(app.getPath('userData'), 'Trash'));
+// Drawings moved to the trash this run. A save still on its way for one of them is dropped,
+// so a deleted drawing does not come back.
+const trashed = new Set();
 const DEFAULTS = { folders: [], theme: 'light', sidebar: true, alwaysOnTop: false, lastFolder: null };
 
 protocol.registerSchemesAsPrivileged([
@@ -149,16 +156,44 @@ ipcMain.handle('dir:list', async (_e, dir) => {
 });
 
 ipcMain.handle('file:read', (_e, file) => fsp.readFile(guard(file), 'utf8'));
-ipcMain.handle('file:write', (_e, file, text) => {
+ipcMain.handle('file:write', async (_e, file, text) => {
   const full = guard(file);
   if (!full.toLowerCase().endsWith(EXT)) throw new Error('Only .excalidraw files are saved.');
+  if (trashed.has(full.toLowerCase())) return;
+  // Keeps what was there as a version first, at most every five minutes.
+  await history.snapshot(full).catch(() => {});
   return writeAtomic(full, text);
 });
+// Called when a drawing is closed or switched away from: keep its last state as a version.
+ipcMain.handle('history:checkpoint', (_e, file) => history.snapshot(guard(file), { force: true }).catch(() => null));
+ipcMain.handle('history:list', (_e, file) => history.list(guard(file)));
+ipcMain.handle('history:read', (_e, file, time) => history.read(guard(file), time));
+// The drawing as it is now is kept as a version too, so a restore can itself be undone.
+ipcMain.handle('history:restore', async (_e, file, time) => {
+  const full = guard(file);
+  const text = await history.read(full, time);
+  await history.snapshot(full, { force: true });
+  await writeAtomic(full, text);
+});
+ipcMain.handle('trash:put', async (_e, file) => {
+  const full = guard(file);
+  await history.snapshot(full, { force: true }).catch(() => {});
+  trashed.add(full.toLowerCase());
+  await trash.put(full);
+});
+ipcMain.handle('trash:list', () => trash.list());
+ipcMain.handle('trash:restore', async (_e, id) => {
+  const file = await trash.restore(id);
+  trashed.delete(file.toLowerCase());
+  return file;
+});
+ipcMain.handle('trash:remove', (_e, id) => trash.remove(id));
 // Left as "Untitled" (or blank), a new drawing is numbered like the blank canvas: Untitled 1, 2...
 ipcMain.handle('file:create', async (_e, dir, name) => {
   const base = cleanName(name);
   const file = !base || base.toLowerCase() === 'untitled' ? await untitledPath(guard(dir)) : await freePath(guard(dir), base);
   await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
+  trashed.delete(file.toLowerCase());
   return file;
 });
 // The blank canvas becomes "Untitled N" once something is drawn: in the folder last used
@@ -173,6 +208,7 @@ ipcMain.handle('file:untitled', async () => {
   }
   const file = await untitledPath(dir);
   await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
+  trashed.delete(file.toLowerCase());
   return file;
 });
 ipcMain.handle('drafts:dir', () => DRAFTS());
@@ -281,6 +317,8 @@ app.whenReady().then(async () => {
   settings.folders.forEach(watch);
   if (fs.existsSync(DRAFTS())) watch(DRAFTS());
   freshIndex().catch(() => {});
+  history.pruneAll().catch(() => {});
+  trash.sweep().catch(() => {});
   pendingFile = fileFromArgs(process.argv);
   createWindow();
 });

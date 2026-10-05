@@ -75,6 +75,11 @@ function App({ initial }) {
     return window.desk.onOpenFile(show);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // After a version is restored the drawing is opened again from disk.
+  const reload = useCallback(() => setDoc(d => ({ ...d, key: d.key + 1, focus: null })), []);
+  // A drawing about to go to the trash is closed first, back to the blank canvas.
+  const closeIfOpen = file => setDoc(d => (d.file && d.file.toLowerCase() === file.toLowerCase() ? { key: d.key + 1, file: null, focus: null } : d));
+
   const attach = async () => setFolders(await window.desk.attachFolders());
   const detach = async root => {
     if (openFile && openFile.toLowerCase().startsWith(root.toLowerCase())) setDoc(d => ({ key: d.key + 1, file: null }));
@@ -85,7 +90,7 @@ function App({ initial }) {
     <div className={`app ${sidebar ? '' : 'no-side'}`}>
       {sidebar && (
         <Sidebar
-          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open} searchAt={searchAt}
+          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open} searchAt={searchAt} onClose={closeIfOpen}
           onAttach={attach} onDetach={detach} onError={onError}
           header={(
             <button
@@ -102,7 +107,7 @@ function App({ initial }) {
           {sidebar ? '‹' : '›'}
         </button>
         <Editor
-          key={doc.key} file={openFile} name={openFile ? fileName(openFile) : ''} focus={doc.focus}
+          key={doc.key} file={openFile} name={openFile ? fileName(openFile) : ''} focus={doc.focus} onReload={reload}
           theme={theme} onTheme={pickTheme} onError={onError} onCreated={onCreated}
         />
         {error && (

@@ -1,6 +1,7 @@
 // The folder explorer: attached folders, their subfolders and their .excalidraw drawings.
 // Folders load as they are expanded and reload when something on disk changes.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import TrashSection from './TrashSection.jsx';
 
 const baseName = p => p.split(/[\\/]/).filter(Boolean).pop() || p;
 const isUnder = (root, p) => p === root || p.toLowerCase().startsWith(`${root.toLowerCase()}\\`) || p.toLowerCase().startsWith(`${root.toLowerCase()}/`);
@@ -50,7 +51,38 @@ function SearchResults({ results, query, openFile, onOpen }) {
   ));
 }
 
-export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header, searchAt }) {
+// A drawing's right-click menu. Delete moves it to the Trash.
+function RowMenu({ menu, onDelete, onDismiss }) {
+  useEffect(() => {
+    const away = e => { if (!e.target.closest?.('.row-menu')) onDismiss(); };
+    const key = e => { if (e.key === 'Escape') onDismiss(); };
+    window.addEventListener('mousedown', away, true);
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('blur', onDismiss);
+    return () => {
+      window.removeEventListener('mousedown', away, true);
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('blur', onDismiss);
+    };
+  }, [onDismiss]);
+  return (
+    <div className="row-menu" style={{ left: menu.x, top: menu.y }} role="menu">
+      <button role="menuitem" onClick={() => onDelete(menu.file)}>Delete</button>
+    </div>
+  );
+}
+
+export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header, searchAt, onClose }) {
+  const [menu, setMenu] = useState(null);
+  const [trashAt, setTrashAt] = useState(0);
+  const dismiss = useCallback(() => setMenu(null), []);
+  const showMenu = (e, file) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, file }); };
+  const trashFile = async file => {
+    setMenu(null);
+    onClose(file);
+    try { await window.desk.trashFile(file); } catch (err) { onError(`Could not delete the drawing: ${err.message}`); }
+    setTrashAt(Date.now());
+  };
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const searchBox = useRef(null);
@@ -150,7 +182,7 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
           : (
             <div
               key={item.path} className={`tree-row file${item.path === openFile ? ' active' : ''}`} style={pad}
-              onClick={() => onOpen(item.path)} title={item.path}
+              onClick={() => onOpen(item.path)} onContextMenu={e => showMenu(e, item.path)} title={item.path}
             >
               <span className="caret" />
               <span className="tree-name">{item.name}</span>
@@ -225,7 +257,7 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
             {draftItems.map(item => (
               <div
                 key={item.path} className={`tree-row file${item.path === openFile ? ' active' : ''}`} style={{ paddingLeft: 24 }}
-                onClick={() => onOpen(item.path)} title={item.path}
+                onClick={() => onOpen(item.path)} onContextMenu={e => showMenu(e, item.path)} title={item.path}
               >
                 <span className="caret" />
                 <span className="tree-name">{item.name}</span>
@@ -233,8 +265,10 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
             ))}
           </div>
         )}
+        <TrashSection changedAt={trashAt} onError={onError} />
       </div>
       )}
+      {menu && <RowMenu menu={menu} onDelete={trashFile} onDismiss={dismiss} />}
     </aside>
   );
 }

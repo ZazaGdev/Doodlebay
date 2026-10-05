@@ -8,6 +8,7 @@ import {
   getSceneVersion, useHandleLibrary,
 } from '@excalidraw/excalidraw';
 import LibrarySections, { libraryAdapter, noteInstall } from './LibrarySections.jsx';
+import VersionHistory from './VersionHistory.jsx';
 
 const SAVE_DELAY = 800;
 
@@ -19,7 +20,7 @@ const UI = {
 const sceneKey = (elements, appState, files) =>
   `${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${Object.keys(files || {}).length}`;
 
-export default function Editor({ file, name, theme, onTheme, onError, onCreated, focus }) {
+export default function Editor({ file, name, theme, onTheme, onError, onCreated, focus, onReload }) {
   const [api, setApi] = useState(null);
   const fileRef = useRef(file);
   fileRef.current = file;
@@ -28,6 +29,9 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
   const latest = useRef(null);
   const savedKey = useRef(null);
   const timer = useRef(null);
+  const [history, setHistory] = useState(false);
+  // Set by a restore, which has already kept the drawing's state as a version.
+  const restored = useRef(false);
 
   useHandleLibrary({ excalidrawAPI: api, adapter: libraryAdapter });
 
@@ -108,15 +112,27 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
       }
     };
     window.addEventListener('keydown', onKey, true);
-    const offFlush = window.desk.onFlush(() => save().finally(() => window.desk.flushed()));
+    // Closing the window or the drawing keeps its last state as a version.
+    const checkpoint = () => (fileRef.current && !restored.current ? window.desk.checkpoint(fileRef.current) : null);
+    const offFlush = window.desk.onFlush(() => save().then(checkpoint).finally(() => window.desk.flushed()));
     const offInstall = window.desk.onLibraryInstall(hash => { noteInstall(hash).finally(() => { window.location.hash = hash; }); });
     return () => {
       window.removeEventListener('keydown', onKey, true);
       offFlush();
       offInstall();
-      save();
+      save().then(checkpoint);
     };
   }, [save]);
+
+  // Saves first, so nothing typed in the last moment is lost, then reopens the drawing.
+  const restore = async time => {
+    try {
+      await save();
+      await window.desk.restoreVersion(fileRef.current, time);
+      restored.current = true;
+      onReload();
+    } catch (err) { onError(`Could not restore the version: ${err.message}`); }
+  };
 
   const label = { saved: 'Saved', saving: 'Saving...', unsaved: 'Unsaved', error: 'Not saved' }[status];
 
@@ -141,12 +157,14 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
           <MainMenu.DefaultItems.Help />
           <MainMenu.DefaultItems.ClearCanvas />
           {file && <MainMenu.Separator />}
+          {file && <MainMenu.Item onSelect={() => setHistory(true)}>Version history</MainMenu.Item>}
           {file && <MainMenu.Item onSelect={() => window.desk.revealFile(file)}>Show in folder</MainMenu.Item>}
           <MainMenu.Separator />
           <MainMenu.DefaultItems.ToggleTheme />
           <MainMenu.DefaultItems.ChangeCanvasBackground />
         </MainMenu>
       </Excalidraw>
+      {history && file && <VersionHistory file={file} theme={theme} onClose={() => setHistory(false)} onRestore={restore} />}
     </>
   );
 }

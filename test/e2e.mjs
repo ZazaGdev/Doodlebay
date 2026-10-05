@@ -417,6 +417,69 @@ await check('search finds text in any attached drawing, opens it at the match, a
   await row(page, 'Plan').waitFor();
 });
 
+const liveCount = s => s.elements.filter(e => !e.isDeleted).length;
+await check('version history keeps earlier saves and restores one, keeping the current state too', async () => {
+  const file = path.join(drawings, 'Versions.excalidraw');
+  await fs.writeFile(file, scene([rect]));
+  await row(page, 'Versions').waitFor({ timeout: 5000 });
+  await row(page, 'Versions').click();
+  await canvas(page).waitFor();
+  await sleep(500);
+  await drawRect(500, 400);
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  // Switching away closes the drawing, which keeps its state as a version.
+  await row(page, 'Plan').click();
+  await sleep(800);
+  await row(page, 'Versions').click();
+  await sleep(500);
+  await drawRect(700, 200);
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  assert.equal(liveCount(await readScene(file)), 3);
+
+  await page.locator('[data-testid="main-menu-trigger"]').click();
+  await page.getByText('Version history').click();
+  const items = page.locator('.vh-item');
+  await items.first().waitFor();
+  assert.equal(await items.count(), 2, 'expected the first state and the state on closing');
+  await items.last().click();
+  await page.locator('.vh-svg svg').waitFor();
+  await shot(page, '13-version-history');
+  await page.getByText('Restore this version').click();
+  await page.locator('.vh').waitFor({ state: 'detached' });
+  await sleep(800);
+  assert.equal(liveCount(await readScene(file)), 1, 'the oldest version did not come back');
+
+  // The state before the restore is now a version too.
+  await page.locator('[data-testid="main-menu-trigger"]').click();
+  await page.getByText('Version history').click();
+  await items.first().waitFor();
+  assert.equal(await items.count(), 3);
+  await page.keyboard.press('Escape');
+  const hist = path.join(userData, 'History');
+  const owners = await Promise.all((await fs.readdir(hist)).map(k => fs.readFile(path.join(hist, k, 'file.txt'), 'utf8').catch(() => '')));
+  assert.ok(owners.includes(file), 'no history folder for the drawing');
+  assert.equal((await fs.readdir(drawings)).some(n => !n.endsWith('.excalidraw') && !['Sub', 'notes.txt'].includes(n)), false, 'history leaked into the drawings folder');
+});
+
+await check('a drawing deleted from its right-click menu goes to the Trash and comes back from there', async () => {
+  const file = path.join(drawings, 'Versions.excalidraw');
+  await row(page, 'Versions').click({ button: 'right' });
+  await page.locator('.row-menu').getByText('Delete').click();
+  await row(page, 'Versions').waitFor({ state: 'detached', timeout: 5000 });
+  await assert.rejects(fs.access(file));
+  await sleep(1500);
+  await assert.rejects(fs.access(file), 'the open drawing was saved back after it was deleted');
+  assert.equal(await page.locator('.save-pill').count(), 0, 'the deleted drawing is still open');
+  await row(page, 'Trash').click();
+  await shot(page, '14-trash');
+  const item = page.locator('.trash-row', { hasText: 'Versions' });
+  await item.hover();
+  await item.getByText('Restore').click();
+  await row(page, 'Versions').waitFor({ timeout: 5000 });
+  assert.equal(liveCount(await readScene(file)), 1);
+  await page.locator('.trash').waitFor({ state: 'detached', timeout: 5000 });
+});
+
 await check('closing the window saves the last edit', async () => {
   await row(page, 'Fresh idea').click();
   await canvas(page).waitFor();
