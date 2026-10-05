@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { EXT, insideAny, listDir, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
+import { EXT, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
@@ -135,8 +135,10 @@ ipcMain.handle('file:write', (_e, file, text) => {
   if (!full.toLowerCase().endsWith(EXT)) throw new Error('Only .excalidraw files are saved.');
   return writeAtomic(full, text);
 });
+// Left as "Untitled" (or blank), a new drawing is numbered like the blank canvas: Untitled 1, 2...
 ipcMain.handle('file:create', async (_e, dir, name) => {
-  const file = await freePath(guard(dir), name);
+  const base = cleanName(name);
+  const file = !base || base.toLowerCase() === 'untitled' ? await untitledPath(guard(dir)) : await freePath(guard(dir), base);
   await fsp.writeFile(file, emptyScene(), { encoding: 'utf8', flag: 'wx' });
   return file;
 });

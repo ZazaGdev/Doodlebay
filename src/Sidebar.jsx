@@ -1,6 +1,6 @@
 // The folder explorer: attached folders, their subfolders and their .excalidraw drawings.
 // Folders load as they are expanded and reload when something on disk changes.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const baseName = p => p.split(/[\\/]/).filter(Boolean).pop() || p;
 const isUnder = (root, p) => p === root || p.toLowerCase().startsWith(`${root.toLowerCase()}\\`) || p.toLowerCase().startsWith(`${root.toLowerCase()}/`);
@@ -9,18 +9,21 @@ function loadExpanded() {
   try { return new Set(JSON.parse(localStorage.getItem('expanded') || '[]')); } catch { return new Set(); }
 }
 
+// Enter or clicking away creates the drawing; Esc cancels. Whichever comes first wins.
 function NewDrawing({ onCreate, onCancel }) {
   const [name, setName] = useState('Untitled');
+  const done = useRef(false);
+  const finish = fn => { if (done.current) return; done.current = true; fn(); };
   return (
     <input
       className="tree-input" autoFocus value={name} aria-label="New drawing name"
       onFocus={e => e.target.select()}
       onChange={e => setName(e.target.value)}
       onKeyDown={e => {
-        if (e.key === 'Enter') onCreate(name);
-        if (e.key === 'Escape') onCancel();
+        if (e.key === 'Enter') finish(() => onCreate(name));
+        if (e.key === 'Escape') finish(onCancel);
       }}
-      onBlur={onCancel}
+      onBlur={() => finish(() => onCreate(name))}
     />
   );
 }

@@ -263,8 +263,8 @@ await check('a new drawing can be made in an attached folder and its subfolder',
   await row(page, 'Sub').hover();
   await row(page, 'Sub').getByTitle('New drawing in this folder').click();
   await page.locator('.tree-input').press('Enter');
-  await row(page, 'Untitled').waitFor();
-  await fs.access(path.join(drawings, 'Sub', 'Untitled.excalidraw'));
+  await row(page, 'Untitled 1').waitFor();
+  await fs.access(path.join(drawings, 'Sub', 'Untitled 1.excalidraw'));
   await shot(page, '09-new');
 });
 
@@ -276,6 +276,32 @@ const onTop = async () => {
   const ps = `Add-Type -Name W -Namespace U -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i);'; ([U.W]::GetWindowLongPtr([IntPtr]${hwnd}, -20).ToInt64() -band 8) -ne 0`;
   return execFileSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8' }).trim() === 'True';
 };
+await check('the new-drawing field creates the file on click-away, Enter still works, Esc cancels', async () => {
+  const before = (await fs.readdir(drawings)).length;
+  // Esc cancels.
+  await row(page, 'Drawings').hover();
+  await row(page, 'Drawings').getByTitle('New drawing in this folder').click();
+  await page.locator('.tree-input').fill('Never made');
+  await page.locator('.tree-input').press('Escape');
+  await sleep(500);
+  assert.equal((await fs.readdir(drawings)).length, before, 'Esc made a file');
+  // A typed name, then a click on the canvas.
+  await row(page, 'Drawings').hover();
+  await row(page, 'Drawings').getByTitle('New drawing in this folder').click();
+  await page.locator('.tree-input').fill('Clicked away');
+  await canvas(page).click({ position: { x: 800, y: 650 } });
+  await row(page, 'Clicked away').waitFor();
+  await page.waitForFunction(() => document.title === 'Clicked away - ExcaliDesk');
+  await fs.access(path.join(drawings, 'Clicked away.excalidraw'));
+  // The default name left alone, then a click elsewhere: the next free Untitled.
+  await row(page, 'Drawings').hover();
+  await row(page, 'Drawings').getByTitle('New drawing in this folder').click();
+  await page.locator('.brand').click();
+  await row(page, 'Untitled 1').first().waitFor();
+  await fs.access(path.join(drawings, 'Untitled 1.excalidraw'));
+  assert.equal((await fs.readdir(drawings)).length, before + 2);
+});
+
 await check('always on top is off by default and the pin turns it on and off', async () => {
   assert.equal(await onTop(), false);
   await page.locator('.pin').click();
@@ -325,9 +351,12 @@ await app.close();
 ({ app, page } = await launch());
 await check('after a restart the blank canvas saves as the next Untitled in the last used folder', async () => {
   await canvas(page).waitFor();
+  const existing = new Set(await fs.readdir(drawings));
   await drawRect(400, 300);
-  await row(page, 'Untitled 1').first().waitFor();
-  const file = path.join(drawings, 'Untitled 1.excalidraw');
+  await page.waitForFunction(() => /^Untitled \d+ - ExcaliDesk$/.test(document.title));
+  const name = (await page.title()).replace(' - ExcaliDesk', '');
+  const file = path.join(drawings, `${name}.excalidraw`);
+  assert.ok(!existing.has(`${name}.excalidraw`), 'reused an existing name');
   await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
   assert.equal((await readScene(file)).elements.filter(e => !e.isDeleted).length, 1);
   // Opening another drawing straight after a stroke keeps the stroke.
