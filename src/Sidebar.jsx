@@ -28,7 +28,46 @@ function NewDrawing({ onCreate, onCancel }) {
   );
 }
 
-export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header }) {
+// Search across every drawing in the attached folders and Drafts. While there is a query
+// the results take the tree's place; Esc clears it.
+function SearchResults({ results, query, openFile, onOpen }) {
+  if (!results) return <div className="tree-note">Searching...</div>;
+  if (!results.length) return <div className="tree-note">Nothing found for "{query}"</div>;
+  return results.map(r => (
+    <div key={r.file} className="search-hit">
+      <div className={`tree-row file${r.file === openFile ? ' active' : ''}`} onClick={() => onOpen(r.file)} title={r.file}>
+        <span className="tree-name">{r.name}</span>
+        <span className="search-where">{baseName(r.file.replace(/[\\/][^\\/]*$/, ''))}</span>
+      </div>
+      {r.matches.slice(0, 5).map(m => (
+        <div key={m.id} className="search-match" onClick={() => onOpen(r.file, m.id)} title={m.kind === 'frame' ? 'Frame name' : 'Text'}>
+          {m.kind === 'frame' && <span className="search-kind">Frame</span>}
+          {m.text}
+        </div>
+      ))}
+      {r.matches.length > 5 && <div className="search-more">{r.matches.length - 5} more in this drawing</div>}
+    </div>
+  ));
+}
+
+export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header, searchAt }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const searchBox = useRef(null);
+  useEffect(() => { if (searchAt) { searchBox.current?.focus(); searchBox.current?.select(); } }, [searchAt]);
+  // Searches a moment after typing stops, and again when a drawing changes on disk.
+  const [changed, setChanged] = useState(0);
+  useEffect(() => window.desk.onFoldersChanged(() => setChanged(n => n + 1)), []);
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setResults(null); return; }
+    let live = true;
+    const timer = setTimeout(() => {
+      window.desk.search(q).then(r => { if (live) setResults(r); }, () => { if (live) setResults([]); });
+    }, 150);
+    return () => { live = false; clearTimeout(timer); };
+  }, [query, changed]);
+
   const [children, setChildren] = useState({});
   const [expanded, setExpanded] = useState(() => {
     const s = loadExpanded();
@@ -129,6 +168,18 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
         {header}
         <button className="head-btn" onClick={onAttach} title="Attach folders">+ Folder</button>
       </div>
+      <div className="side-search">
+        <input
+          ref={searchBox} type="search" value={query} placeholder="Search all drawings (Ctrl+Shift+F)" aria-label="Search all drawings"
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); e.target.blur(); } }}
+        />
+      </div>
+      {query.trim() ? (
+        <div className="tree search-results">
+          <SearchResults results={results} query={query.trim()} openFile={openFile} onOpen={onOpen} />
+        </div>
+      ) : (
       <div className="tree">
         {opened.length > 0 && (
           <div className="root">
@@ -183,6 +234,7 @@ export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen
           </div>
         )}
       </div>
+      )}
     </aside>
   );
 }

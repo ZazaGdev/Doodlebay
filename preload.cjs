@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('desk', {
   createFile: (dir, name) => ipcRenderer.invoke('file:create', dir, name),
   createUntitled: () => ipcRenderer.invoke('file:untitled'),
   draftsDir: () => ipcRenderer.invoke('drafts:dir'),
+  search: query => ipcRenderer.invoke('search:query', query),
   pendingFile: () => ipcRenderer.invoke('file:pending'),
   onOpenFile: on('file:open'),
   revealFile: file => ipcRenderer.invoke('file:reveal', file),

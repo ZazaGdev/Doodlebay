@@ -19,7 +19,7 @@ const UI = {
 const sceneKey = (elements, appState, files) =>
   `${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${Object.keys(files || {}).length}`;
 
-export default function Editor({ file, name, theme, onTheme, onError, onCreated }) {
+export default function Editor({ file, name, theme, onTheme, onError, onCreated, focus }) {
   const [api, setApi] = useState(null);
   const fileRef = useRef(file);
   fileRef.current = file;
@@ -40,9 +40,25 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated 
     for (const face of document.fonts) if (!/Xiaolai/i.test(face.family)) face.load().catch(() => {});
   }, [api]);
 
+  // A search result asks for one element: once it is in the scene, select it and scroll to it.
+  useEffect(() => {
+    if (!api || !focus) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = api.getSceneElements().find(e => e.id === focus.id);
+      if (!el && ++tries < 40) return;
+      clearInterval(timer);
+      if (!el) return;
+      api.updateScene({ appState: { selectedElementIds: { [el.id]: true } } });
+      api.scrollToContent(el, { fitToViewport: false });
+    }, 50);
+    return () => clearInterval(timer);
+  }, [api, focus]);
+
   const [initialData] = useState(() => !file ? null : window.desk.readFile(file)
     .then(text => loadFromBlob(new Blob([text], { type: 'application/json' }), null, null))
-    .then(scene => ({ ...scene, scrollToContent: true }))
+    // Opened from a search result, the view goes to the match instead (see above).
+    .then(scene => ({ ...scene, scrollToContent: !focus }))
     .catch(err => { onError(`Could not open ${name}: ${err.message}`); return null; }));
 
   const save = useCallback(async () => {

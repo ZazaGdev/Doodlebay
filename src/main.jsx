@@ -17,7 +17,7 @@ function App({ initial }) {
   const [onTop, setOnTop] = useState(initial.alwaysOnTop);
   // key changes only when another drawing is opened, so the blank canvas turning into
   // "Untitled N" keeps the same editor (and its undo history).
-  const [doc, setDoc] = useState({ key: 0, file: null });
+  const [doc, setDoc] = useState({ key: 0, file: null, focus: null });
   const openFile = doc.file;
   const [error, setError] = useState(null);
   // Files opened from Explorer that are not in an attached folder, shown at the top of the sidebar.
@@ -34,10 +34,26 @@ function App({ initial }) {
   const toggleSidebar = () => { setSidebar(!sidebar); window.desk.setSettings({ sidebar: !sidebar }); };
 
   const remember = file => { if (!file.toLowerCase().startsWith(initial.drafts.toLowerCase())) window.desk.setSettings({ lastFolder: folderOf(file) }); };
-  const open = file => {
-    setDoc(d => (d.file === file ? d : { key: d.key + 1, file }));
+  // focusId, from a search result, is the element to bring into view once the drawing is open.
+  const open = (file, focusId = null) => {
+    const focus = focusId ? { id: focusId, at: Date.now() } : null;
+    setDoc(d => (d.file === file ? (focus ? { ...d, focus } : d) : { key: d.key + 1, file, focus }));
     remember(file);
   };
+  // Ctrl+Shift+F shows the folders if hidden and puts the cursor in the search box.
+  const [searchAt, setSearchAt] = useState(0);
+  useEffect(() => {
+    const onKey = e => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSidebar(true);
+        setSearchAt(Date.now());
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
   const onCreated = useCallback(file => {
     setDoc(d => ({ ...d, file }));
     remember(file);
@@ -69,7 +85,7 @@ function App({ initial }) {
     <div className={`app ${sidebar ? '' : 'no-side'}`}>
       {sidebar && (
         <Sidebar
-          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open}
+          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open} searchAt={searchAt}
           onAttach={attach} onDetach={detach} onError={onError}
           header={(
             <button
@@ -86,7 +102,7 @@ function App({ initial }) {
           {sidebar ? '‹' : '›'}
         </button>
         <Editor
-          key={doc.key} file={openFile} name={openFile ? fileName(openFile) : ''}
+          key={doc.key} file={openFile} name={openFile ? fileName(openFile) : ''} focus={doc.focus}
           theme={theme} onTheme={pickTheme} onError={onError} onCreated={onCreated}
         />
         {error && (

@@ -7,6 +7,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXT, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
+import { SearchIndex } from './lib/search.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
@@ -28,6 +29,21 @@ protocol.registerSchemesAsPrivileged([
 let win = null;
 let settings = { ...DEFAULTS };
 const watchers = new Map();
+
+// Search over every drawing in the attached folders and Drafts, kept in memory only. Any
+// change on disk marks it stale, and the next search reads the changed files again.
+const index = new SearchIndex();
+let indexStale = true;
+let indexing = null;
+function freshIndex() {
+  if (indexing) return indexing.then(freshIndex);
+  if (!indexStale) return Promise.resolve();
+  indexStale = false;
+  const roots = [...settings.folders, DRAFTS()].filter(r => fs.existsSync(r));
+  indexing = index.refresh(roots).finally(() => { indexing = null; });
+  // A change that came in while reading is picked up by one more pass.
+  return indexing.then(freshIndex);
+}
 
 // 'screen-saver' is the highest level Windows allows, so the window also stays above the
 // taskbar and other always-on-top windows.
@@ -92,6 +108,7 @@ function watch(root) {
   let timer = null;
   try {
     const w = fs.watch(root, { recursive: true }, () => {
+      indexStale = true;
       clearTimeout(timer);
       timer = setTimeout(() => win?.webContents.send('folders:changed', root), 250);
     });
@@ -103,6 +120,7 @@ function watch(root) {
 function unwatch(root) {
   watchers.get(root)?.close();
   watchers.delete(root);
+  indexStale = true;
 }
 
 ipcMain.handle('settings:get', () => settings);
@@ -117,6 +135,7 @@ ipcMain.handle('folders:attach', async () => {
   const known = new Set(settings.folders.map(f => f.toLowerCase()));
   const added = r.filePaths.map(p => path.resolve(p)).filter(p => !known.has(p.toLowerCase()));
   added.forEach(watch);
+  indexStale = true;
   return (await saveSettings({ folders: [...settings.folders, ...added] })).folders;
 });
 
@@ -157,6 +176,10 @@ ipcMain.handle('file:untitled', async () => {
   return file;
 });
 ipcMain.handle('drafts:dir', () => DRAFTS());
+ipcMain.handle('search:query', async (_e, q) => {
+  await freshIndex();
+  return index.query(q);
+});
 ipcMain.handle('file:pending', () => {
   pageReady = true;
   const file = pendingFile;
@@ -257,6 +280,7 @@ app.whenReady().then(async () => {
   settings = await readJson(SETTINGS(), DEFAULTS);
   settings.folders.forEach(watch);
   if (fs.existsSync(DRAFTS())) watch(DRAFTS());
+  freshIndex().catch(() => {});
   pendingFile = fileFromArgs(process.argv);
   createWindow();
 });

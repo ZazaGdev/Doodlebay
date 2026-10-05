@@ -390,6 +390,33 @@ await check('a file added on disk shows up in the sidebar', async () => {
   await row(page, 'From outside').waitFor({ timeout: 5000 });
 });
 
+const textEl = (id, t, x, y) => ({ ...rect, id, type: 'text', x, y, width: 220, height: 25, text: t, originalText: t, fontSize: 20, fontFamily: 5, textAlign: 'left', verticalAlign: 'top', containerId: null, lineHeight: 1.25, autoResize: true });
+await check('search finds text in any attached drawing, opens it at the match, and follows changes on disk', async () => {
+  await fs.writeFile(path.join(drawings, 'Sub', 'Deep note.excalidraw'), scene([rect, textEl('far', 'the zebracorn lives here', 3000, 2200)]));
+  await focusCanvas(page);
+  await page.keyboard.press('Control+Shift+F');
+  const box = page.getByLabel('Search all drawings');
+  assert.equal(await box.evaluate(el => el === document.activeElement), true, 'Ctrl+Shift+F did not reach the search box');
+  await box.fill('zebracorn');
+  const hit = page.locator('.search-match', { hasText: 'zebracorn' });
+  await hit.waitFor({ timeout: 5000 });
+  await shot(page, '12-search');
+  await hit.click();
+  await page.waitForFunction(() => document.title.startsWith('Deep note'));
+  // The text is selected, so Excalidraw shows its text properties.
+  await page.getByText('Font family').waitFor({ timeout: 5000 });
+  await sleep(600);
+  await shot(page, '12b-search-opened');
+
+  // A drawing changed outside Doodlebay is searchable straight away.
+  await fs.writeFile(path.join(drawings, 'Sub', 'Inside.excalidraw'), scene([textEl('q1', 'feed the quokka', 100, 100)]));
+  await sleep(600);
+  await box.fill('quokka');
+  await page.locator('.search-hit', { hasText: 'Inside' }).waitFor({ timeout: 5000 });
+  await box.press('Escape');
+  await row(page, 'Plan').waitFor();
+});
+
 await check('closing the window saves the last edit', async () => {
   await row(page, 'Fresh idea').click();
   await canvas(page).waitFor();

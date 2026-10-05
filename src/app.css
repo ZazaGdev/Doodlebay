@@ -219,3 +219,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ed-lib-browse:hover { background: var(--color-brand-hover, var(--color-primary)); }
 /* Leaves room for the library's menu button when Excalidraw puts it in the top corner. */
 .library-menu-items-container:has(.library-menu-dropdown-container--in-heading) .ed-lib-browse { width: calc(100% - 48px); }
+
+/* Search across all drawings, at the top of the sidebar (Sidebar.jsx). */
+.side-search { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.side-search input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  outline: none;
+}
+.side-search input:focus { border-color: var(--accent); }
+.search-results .tree-note { padding: 6px 12px; }
+.search-hit { margin-bottom: 6px; }
+.search-hit > .tree-row { padding-left: 12px; font-weight: 600; }
+.search-where { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; font-weight: 400; font-size: 12px; color: var(--muted); }
+.search-match {
+  padding: 3px 10px 3px 24px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-match:hover { background: var(--hover); color: var(--text); }
+.search-kind { margin-right: 6px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; }
+.search-more { padding: 2px 10px 2px 24px; font-size: 12px; color: var(--muted); font-style: italic; }
