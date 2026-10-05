@@ -455,6 +455,29 @@ await check('a second launch with a file opens it in the running window and exit
 });
 await app.close();
 
+// First start after the rename: ExcaliDesk's data folder sits beside Doodlebay's.
+{
+  const old = path.join(tmp, 'ExcaliDesk');
+  await fs.mkdir(path.join(old, 'Drafts'), { recursive: true });
+  await fs.writeFile(path.join(old, 'settings.json'), JSON.stringify({ folders: [drawings], theme: 'dark', sidebar: true, alwaysOnTop: false }));
+  await fs.copyFile(path.join(userData, 'library.excalidrawlib'), path.join(old, 'library.excalidrawlib'));
+  await fs.writeFile(path.join(old, 'Drafts', 'Old draft.excalidraw'), scene([]));
+  const fresh = path.join(tmp, 'Doodlebay');
+  const exe = process.env.DOODLEBAY_EXE;
+  const app2 = await electron.launch({ ...(exe ? { executablePath: exe, args: [] } : { args: [root] }), env: { ...process.env, DOODLEBAY_HIDDEN: '1', DOODLEBAY_USER_DATA: fresh } });
+  const page2 = await app2.firstWindow();
+  await page2.waitForSelector('.sidebar');
+  await check('first start after the rename brings over ExcaliDesk folders, theme, library and Drafts', async () => {
+    await page2.locator('.tree-name', { hasText: /^Plan$/ }).waitFor();
+    await page2.locator('.tree-name', { hasText: /^Old draft$/ }).waitFor();
+    assert.equal(await page2.evaluate(() => document.documentElement.dataset.theme), 'dark');
+    const lib = JSON.parse(await fs.readFile(path.join(fresh, 'library.excalidrawlib'), 'utf8'));
+    assert.ok(lib.libraryItems.length >= 1, 'library not carried over');
+    await fs.access(path.join(old, 'settings.json'));
+  });
+  await app2.close();
+}
+
 await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
 const failed = results.filter(r => r[0] === 'FAIL').length;
 console.log(`\n${results.length - failed}/${results.length} passed`);

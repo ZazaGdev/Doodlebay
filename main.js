@@ -231,6 +231,20 @@ function createWindow() {
   win.loadURL(`${ORIGIN}/index.html`);
 }
 
+// The app was called ExcaliDesk before. On the first start under the new name, bring over
+// its settings, library and Drafts from the old data folder beside this one. Drawings in
+// attached folders never move, so nothing else is needed.
+async function migrateFromExcaliDesk() {
+  const dir = app.getPath('userData');
+  const old = path.join(path.dirname(dir), 'ExcaliDesk');
+  if (fs.existsSync(SETTINGS()) || !fs.existsSync(path.join(old, 'settings.json'))) return;
+  await fsp.mkdir(dir, { recursive: true });
+  for (const name of ['settings.json', 'library.excalidrawlib', 'Drafts']) {
+    const from = path.join(old, name);
+    if (fs.existsSync(from)) await fsp.cp(from, path.join(dir, name), { recursive: true, errorOnExist: false, force: false });
+  }
+}
+
 app.whenReady().then(async () => {
   if (!firstCopy) return;
   protocol.handle('app', req => {
@@ -239,6 +253,7 @@ app.whenReady().then(async () => {
     if (!file.startsWith(RENDERER)) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(file).toString());
   });
+  await migrateFromExcaliDesk().catch(() => {});
   settings = await readJson(SETTINGS(), DEFAULTS);
   settings.folders.forEach(watch);
   if (fs.existsSync(DRAFTS())) watch(DRAFTS());
