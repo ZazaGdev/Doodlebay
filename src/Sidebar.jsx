@@ -25,7 +25,7 @@ function NewDrawing({ onCreate, onCancel }) {
   );
 }
 
-export default function Sidebar({ folders, drafts, openFile, onOpen, onAttach, onDetach, onError, header }) {
+export default function Sidebar({ folders, drafts, opened = [], openFile, onOpen, onAttach, onDetach, onError, header }) {
   const [children, setChildren] = useState({});
   const [expanded, setExpanded] = useState(() => {
     const s = loadExpanded();
@@ -127,6 +127,23 @@ export default function Sidebar({ folders, drafts, openFile, onOpen, onAttach, o
         <button className="head-btn" onClick={onAttach} title="Attach folders">+ Folder</button>
       </div>
       <div className="tree">
+        {opened.length > 0 && (
+          <div className="root">
+            <div className="tree-row root-row" title="Opened from Explorer; their folders are not attached">
+              <span className="caret" />
+              <span className="tree-name">{opened.length === 1 ? 'Opened file' : 'Opened files'}</span>
+            </div>
+            {opened.map(file => (
+              <div
+                key={file} className={`tree-row file${file === openFile ? ' active' : ''}`} style={{ paddingLeft: 24 }}
+                onClick={() => onOpen(file)} title={file}
+              >
+                <span className="caret" />
+                <span className="tree-name">{baseName(file).replace(/\.excalidraw$/i, '')}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {!folders.length && (
           <div className="empty-side">
             <p>Attach a folder to see its drawings here.</p>

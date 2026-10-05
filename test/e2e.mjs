@@ -6,7 +6,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.join(root, 'test', 'out');
@@ -34,10 +35,10 @@ const check = async (name, fn) => {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const readScene = async f => JSON.parse(await fs.readFile(f, 'utf8'));
 
-async function launch() {
+async function launch(extra = []) {
   // EXCALIDESK_EXE runs the checks against a packaged build, e.g. dist/win-unpacked/ExcaliDesk.exe.
   const exe = process.env.EXCALIDESK_EXE;
-  const app = await electron.launch({ ...(exe ? { executablePath: exe, args: [] } : { args: [root] }), env: { ...process.env, EXCALIDESK_HIDDEN: '1', EXCALIDESK_USER_DATA: userData } });
+  const app = await electron.launch({ ...(exe ? { executablePath: exe, args: extra } : { args: [root, ...extra] }), env: { ...process.env, EXCALIDESK_HIDDEN: '1', EXCALIDESK_USER_DATA: userData } });
   const page = await app.firstWindow();
   page.on('pageerror', e => console.log('  page error:', e.message));
   // Chromium reports the CDN font fallbacks as CSP errors even though the bundled fonts load.
@@ -336,6 +337,41 @@ await check('after a restart the blank canvas saves as the next Untitled in the 
   await sleep(500);
   assert.equal((await readScene(file)).elements.filter(e => !e.isDeleted).length, 2, 'stroke lost when switching');
   await shot(page, '11-untitled-in-folder');
+});
+await app.close();
+
+// Opening from Explorer: Windows runs the app with the file as its argument.
+const elsewhere = path.join(tmp, 'Elsewhere');
+await fs.mkdir(elsewhere);
+const loose = path.join(elsewhere, 'Loose.excalidraw');
+const loose2 = path.join(elsewhere, 'Second.excalidraw');
+await fs.writeFile(loose, scene([rect]));
+await fs.writeFile(loose2, scene([]));
+({ app, page } = await launch([loose]));
+await check('a file passed on start opens on its own as an Opened file and saves back to itself', async () => {
+  await page.waitForFunction(() => document.title === 'Loose - ExcaliDesk');
+  await row(page, 'Opened file').waitFor();
+  await row(page, 'Loose').waitFor();
+  assert.equal(await row(page, 'Elsewhere').count(), 0, 'its folder must not be attached');
+  await canvas(page).waitFor();
+  await drawRect(600, 450);
+  await page.keyboard.press('Control+s');
+  await page.waitForFunction(() => document.querySelector('.save-pill')?.textContent === 'Saved');
+  assert.equal((await readScene(loose)).elements.filter(e => !e.isDeleted).length, 2);
+  await shot(page, '12-opened-file');
+});
+
+await check('a second launch with a file opens it in the running window and exits', async () => {
+  const exe = process.env.EXCALIDESK_EXE || createRequire(import.meta.url)('electron');
+  const args = process.env.EXCALIDESK_EXE ? [loose2] : [root, loose2];
+  const second = spawn(exe, args, { env: { ...process.env, EXCALIDESK_HIDDEN: '1', EXCALIDESK_USER_DATA: userData }, stdio: 'ignore' });
+  const code = await new Promise((res, rej) => { second.on('exit', res); setTimeout(() => rej(new Error('second copy kept running')), 20000); });
+  assert.equal(code, 0);
+  await page.waitForFunction(() => document.title === 'Second - ExcaliDesk', null, { timeout: 10000 });
+  await row(page, 'Second').waitFor();
+  await row(page, 'Loose').waitFor();
+  assert.equal((await app.windows()).length, 1);
+  await shot(page, '13-second-launch');
 });
 await app.close();
 

@@ -42,11 +42,48 @@ async function saveSettings(patch) {
   return settings;
 }
 
+// Drawings opened from Explorer that are not in an attached folder. Only these exact files
+// are reachable, and only for this run; their folders are not attached.
+const opened = new Set();
+
 // Every path the renderer sends is checked against the attached folders.
 function guard(p) {
   const full = path.resolve(String(p || ''));
-  if (!insideAny([...settings.folders, DRAFTS()], full)) throw new Error('That file is not in an attached folder.');
+  if (!opened.has(full.toLowerCase()) && !insideAny([...settings.folders, DRAFTS()], full)) throw new Error('That file is not in an attached folder.');
   return full;
+}
+
+// A .excalidraw path among command-line arguments (Explorer passes the double-clicked file).
+function fileFromArgs(argv) {
+  const hit = argv.slice(1).find(a => a.toLowerCase().endsWith(EXT) && fs.existsSync(a));
+  if (!hit) return null;
+  const full = path.resolve(hit);
+  opened.add(full.toLowerCase());
+  return full;
+}
+
+// The file waiting for the page to be ready, then handed over with 'file:open'.
+let pendingFile = null;
+let pageReady = false;
+function openExternal(file) {
+  if (!file) return;
+  if (pageReady && win) win.webContents.send('file:open', file);
+  else pendingFile = file;
+}
+
+// One copy only: a second launch (another double-click) hands its file to this window.
+const firstCopy = app.requestSingleInstanceLock();
+if (!firstCopy) {
+  app.quit();
+} else {
+  app.on('second-instance', (_e, argv) => {
+    openExternal(fileFromArgs(argv));
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      if (!process.env.EXCALIDESK_HIDDEN) win.show();
+      win.focus();
+    }
+  });
 }
 
 // One recursive watcher per attached folder; the sidebar reloads what it shows.
@@ -118,6 +155,12 @@ ipcMain.handle('file:untitled', async () => {
   return file;
 });
 ipcMain.handle('drafts:dir', () => DRAFTS());
+ipcMain.handle('file:pending', () => {
+  pageReady = true;
+  const file = pendingFile;
+  pendingFile = null;
+  return file;
+});
 ipcMain.handle('file:reveal', (_e, file) => shell.showItemInFolder(guard(file)));
 
 ipcMain.handle('library:load', () => fsp.readFile(LIBRARY(), 'utf8').catch(() => null));
@@ -181,11 +224,13 @@ function createWindow() {
     win.webContents.send('app:flush');
   });
   win.on('closed', () => { win = null; });
+  win.webContents.on('did-start-loading', () => { pageReady = false; });
 
   win.loadURL(`${ORIGIN}/index.html`);
 }
 
 app.whenReady().then(async () => {
+  if (!firstCopy) return;
   protocol.handle('app', req => {
     const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '') || 'index.html';
     const file = path.normalize(path.join(RENDERER, rel));
@@ -195,6 +240,7 @@ app.whenReady().then(async () => {
   settings = await readJson(SETTINGS(), DEFAULTS);
   settings.folders.forEach(watch);
   if (fs.existsSync(DRAFTS())) watch(DRAFTS());
+  pendingFile = fileFromArgs(process.argv);
   createWindow();
 });
 

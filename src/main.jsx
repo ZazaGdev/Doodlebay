@@ -1,5 +1,5 @@
 // The app shell: the folder sidebar on the left, the open drawing on the right.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@excalidraw/excalidraw/index.css';
 import './app.css';
@@ -7,6 +7,7 @@ import Sidebar from './Sidebar.jsx';
 import Editor from './Editor.jsx';
 
 const fileName = p => (p.split(/[\\/]/).pop() || p).replace(/\.excalidraw$/i, '');
+const under = (root, p) => p.toLowerCase().startsWith(`${root.toLowerCase().replace(/[\\/]+$/, '')}\\`);
 const folderOf = p => p.replace(/[\\/][^\\/]*$/, '');
 
 function App({ initial }) {
@@ -19,6 +20,8 @@ function App({ initial }) {
   const [doc, setDoc] = useState({ key: 0, file: null });
   const openFile = doc.file;
   const [error, setError] = useState(null);
+  // Files opened from Explorer that are not in an attached folder, shown at the top of the sidebar.
+  const [opened, setOpened] = useState([]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -40,6 +43,22 @@ function App({ initial }) {
     remember(file);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const foldersRef = useRef(folders);
+  foldersRef.current = folders;
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(() => {
+    const show = file => {
+      if (!file) return;
+      if (![...foldersRef.current, initial.drafts].some(r => under(r, file))) {
+        setOpened(list => (list.some(f => f.toLowerCase() === file.toLowerCase()) ? list : [file, ...list]));
+      }
+      openRef.current(file);
+    };
+    window.desk.pendingFile().then(show);
+    return window.desk.onOpenFile(show);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const attach = async () => setFolders(await window.desk.attachFolders());
   const detach = async root => {
     if (openFile && openFile.toLowerCase().startsWith(root.toLowerCase())) setDoc(d => ({ key: d.key + 1, file: null }));
@@ -50,7 +69,7 @@ function App({ initial }) {
     <div className={`app ${sidebar ? '' : 'no-side'}`}>
       {sidebar && (
         <Sidebar
-          folders={folders} drafts={initial.drafts} openFile={openFile} onOpen={open}
+          folders={folders} drafts={initial.drafts} opened={opened} openFile={openFile} onOpen={open}
           onAttach={attach} onDetach={detach} onError={onError}
           header={(
             <button
