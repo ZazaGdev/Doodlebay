@@ -64,7 +64,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Doodlebay",
-      "artifactName": "Doodlebay-Setup-${version}.exe"
+      "artifactName": "Doodlebay-Setup-${version}.exe",
+      "include": "build/installer.nsh"
     }
   }
 }
