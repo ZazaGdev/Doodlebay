@@ -32,14 +32,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Fonts
+## Everything else
 
-The fonts that ship with the editor (Excalifont, Virgil, Nunito, Lilita One, Comic
-Shanns, Cascadia Code, Liberation Sans, Xiaolai) come with the Excalidraw package under
-their own open licences (SIL Open Font License or similar). See the Excalidraw repository
-for each font's licence.
-
-## Other packages
-
-React, Electron and the rest of the dependencies in `package.json` are under their own
-open-source licences, listed in each package inside `node_modules`.
+[THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt) holds the licence of every package
+bundled into the app (all MIT, ISC, BSD, Apache-2.0 or similar permissive licences) and of
+the fonts (SIL Open Font License 1.1, and MIT for Comic Shanns). It ships inside the
+installer too. `npm run licenses` regenerates it. Electron puts Chromium's notices in the
+app folder as `LICENSES.chromium.html`.

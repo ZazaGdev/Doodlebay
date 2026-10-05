@@ -17,14 +17,30 @@ no cloud, no subscription.
   other window, even when you switch apps. Press it again to turn it off. It is off by
   default and remembered.
 
+- **Blank canvas to start:** with no drawing open you can draw straight away. The first
+  stroke saves it as "Untitled 1" (then 2, 3...) in the folder you used last, or under
+  **Drafts** in the sidebar when no folder is attached.
+- **Opens .excalidraw files from Explorer:** double-click one and it opens in ExcaliDesk,
+  in the window that is already open. A file outside your folders shows under
+  **Opened file** and saves back to itself.
+- **Library sections:** each library you add from "Browse libraries" gets its own named
+  section that folds open and closed.
+
 Files made here open on excalidraw.com and in any other Excalidraw app, and the other way round.
 
-## Run it
+## Download
+
+Get `ExcaliDesk-Setup-<version>.exe` from the
+[latest release](https://github.com/ZazaGdev/ExcaliDesk/releases/latest) and run it.
+It is not code-signed, so Windows SmartScreen shows "Windows protected your PC" the first
+time: click **More info**, then **Run anyway**.
+
+## Run it from the code
 
 You need [Node.js](https://nodejs.org) 20 or newer (22 is what it is built with) and Windows.
 
 ```
-git clone <this repo>   (or unzip the folder you were sent)
+git clone https://github.com/ZazaGdev/ExcaliDesk.git
 cd ExcaliDesk
 npm install
 npm start
@@ -73,7 +89,9 @@ One check installs a library from libraries.excalidraw.com and is skipped when o
 | `lib/files.js` | file helpers (listing, safe names, atomic saves, settings) |
 | `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw |
 | `vite.config.js` | builds `src/` into `dist-renderer/` and copies the editor's fonts so it works offline |
+| `src/LibrarySections.jsx` | the per-library sections in the library panel |
 | `build/make-icon.mjs` | draws `build/icon.png` |
+| `build/licenses.cjs` | writes `THIRD_PARTY_LICENSES.txt` |
 
 ## What is left out
 
@@ -84,5 +102,6 @@ text-to-diagram works offline and is included.
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Excalidraw is MIT licensed too; its notice is in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). ExcaliDesk is not made by or connected to
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and every other bundled package and font
+is listed with its licence in [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt). ExcaliDesk is not made by or connected to
 the Excalidraw team.
