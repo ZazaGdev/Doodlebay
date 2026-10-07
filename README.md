@@ -29,7 +29,8 @@ Excalidraw team.
   MOV or OGV video and it plays on the board, muted to start. Select it for **Unmute** and
   **Repeat** (on for a new video, saved with the board). Videos are copied into a
   `Board.media` folder next to the board, so keep the two together when you move a board.
-  Exports show a still frame.
+  A video copied to another board gets copied into that board's folder, and a deleted board
+  takes its videos to the Trash with it. Exports show a still frame.
 - **Folder sidebar:** attach as many folders as you like. They show their subfolders and
   drawings, stay attached after a restart, and update when files change on disk.
   Attaching a folder never moves or changes anything in it.

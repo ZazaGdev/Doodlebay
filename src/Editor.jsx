@@ -190,7 +190,7 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
           <MainMenu.DefaultItems.ChangeCanvasBackground />
         </MainMenu>
       </Excalidraw>
-      <MediaLayer api={api} file={file} />
+      <MediaLayer api={api} file={file} onError={onError} />
       {history && file && <VersionHistory file={file} theme={theme} onClose={() => setHistory(false)} onRestore={restore} />}
     </>
   );

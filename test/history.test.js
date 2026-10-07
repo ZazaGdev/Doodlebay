@@ -63,3 +63,56 @@ test('the trash moves a drawing out, lists it, restores it where it was, and emp
   await trash.remove(keep);
   assert.deepEqual(await trash.list(), []);
 });
+
+test('a drawing\'s videos go to the trash with it and come back, renamed with it', async () => {
+  const dir = await tmp();
+  const trash = new Trash(path.join(dir, 'Trash'));
+  const file = path.join(dir, 'Plan.excalidraw');
+  const scene = { elements: [{ id: 'v', customData: { video: 'Plan.media/clip.mp4', loop: true } }], files: {} };
+  await fs.writeFile(file, JSON.stringify(scene));
+  await fs.mkdir(path.join(dir, 'Plan.media'));
+  await fs.writeFile(path.join(dir, 'Plan.media', 'clip.mp4'), 'video');
+  const id = await trash.put(file);
+  await assert.rejects(fs.access(path.join(dir, 'Plan.media')));
+
+  await fs.writeFile(file, 'new one');
+  const back = await trash.restore(id);
+  assert.equal(back, path.join(dir, 'Plan 2.excalidraw'));
+  assert.equal(await fs.readFile(path.join(dir, 'Plan 2.media', 'clip.mp4'), 'utf8'), 'video');
+  const restored = JSON.parse(await fs.readFile(back, 'utf8'));
+  assert.deepEqual(restored.elements[0].customData, { video: 'Plan 2.media/clip.mp4', loop: true });
+
+  const again = await trash.put(back);
+  await trash.remove(again);
+  await assert.rejects(fs.access(path.join(dir, 'Plan 2.media')));
+  assert.deepEqual(await fs.readdir(path.join(dir, 'Trash')), []);
+});
+
+test('a drawing with videos is restored beside a stray media folder of the same name, never into it', async () => {
+  const dir = await tmp();
+  const trash = new Trash(path.join(dir, 'Trash'));
+  const file = path.join(dir, 'Plan.excalidraw');
+  await fs.writeFile(file, JSON.stringify({ elements: [{ id: 'v', customData: { video: 'Plan.media/clip.mp4' } }] }));
+  await fs.mkdir(path.join(dir, 'Plan.media'));
+  await fs.writeFile(path.join(dir, 'Plan.media', 'clip.mp4'), 'mine');
+  const id = await trash.put(file);
+  // Someone else's folder of the same name turns up meanwhile.
+  await fs.mkdir(path.join(dir, 'Plan.media'));
+  await fs.writeFile(path.join(dir, 'Plan.media', 'clip.mp4'), 'theirs');
+  const back = await trash.restore(id);
+  assert.equal(back, path.join(dir, 'Plan 2.excalidraw'));
+  assert.equal(await fs.readFile(path.join(dir, 'Plan 2.media', 'clip.mp4'), 'utf8'), 'mine');
+  assert.equal(await fs.readFile(path.join(dir, 'Plan.media', 'clip.mp4'), 'utf8'), 'theirs');
+  assert.equal(JSON.parse(await fs.readFile(back, 'utf8')).elements[0].customData.video, 'Plan 2.media/clip.mp4');
+});
+
+test('if the drawing cannot be moved to the trash, its videos stay where they were', async () => {
+  const dir = await tmp();
+  const trash = new Trash(path.join(dir, 'Trash'));
+  const file = path.join(dir, 'Missing.excalidraw');
+  await fs.mkdir(path.join(dir, 'Missing.media'));
+  await fs.writeFile(path.join(dir, 'Missing.media', 'clip.mp4'), 'v');
+  await assert.rejects(trash.put(file));
+  assert.equal(await fs.readFile(path.join(dir, 'Missing.media', 'clip.mp4'), 'utf8'), 'v');
+  assert.deepEqual(await trash.list(), []);
+});

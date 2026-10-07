@@ -9,7 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { newElementWith, CaptureUpdateAction } from '@excalidraw/excalidraw';
-import { mediaURL } from './videoDrop.js';
+import { mediaURL, adoptVideos, claimLoaded } from './videoDrop.js';
 
 const GIF = 'image/gif';
 const originals = new Map();
@@ -122,16 +122,27 @@ function useHosts(api) {
   return hosts;
 }
 
-export default function MediaLayer({ api, file }) {
+export default function MediaLayer({ api, file, onError }) {
   const [scene, setScene] = useState(null);
   const [unmuted, setUnmuted] = useState(() => new Set());
   const hosts = useHosts(api);
+  const fileRef = useRef(file);
+  fileRef.current = file;
+  const errorRef = useRef(onError);
+  errorRef.current = onError;
+  // Set once the board's own content has loaded (see claimLoaded).
+  const loaded = useRef(false);
 
   useEffect(() => {
     if (!api) return;
     const update = (elements, appState, files) => {
       keepGifFrames(files);
       const items = mediaIn(elements, files);
+      if (!appState.isLoading && !loaded.current && fileRef.current) {
+        loaded.current = true;
+        claimLoaded(fileRef.current, items);
+      }
+      adoptVideos(api, fileRef.current, items, errorRef.current);
       setScene(prev => (!items.length && !prev?.items.length ? prev : { items, appState, files }));
     };
     update(api.getSceneElements(), api.getAppState(), api.getFiles());
