@@ -25,6 +25,11 @@ Excalidraw team.
 - **The whole Excalidraw editor:** shapes, arrows, freehand, text, images, frames, the
   library (including "Browse libraries"), Mermaid text-to-diagram, search, export to PNG,
   SVG and clipboard, dark mode, canvas background, every keyboard shortcut. Works offline.
+- **GIFs and videos:** a GIF dropped on a board keeps playing. Drop or paste an MP4, WebM,
+  MOV or OGV video and it plays on the board, muted to start. Select it for **Unmute** and
+  **Repeat** (on for a new video, saved with the board). Videos are copied into a
+  `Board.media` folder next to the board, so keep the two together when you move a board.
+  Exports show a still frame.
 - **Folder sidebar:** attach as many folders as you like. They show their subfolders and
   drawings, stay attached after a restart, and update when files change on disk.
   Attaching a folder never moves or changes anything in it.
@@ -83,7 +88,7 @@ trying a build.
 ## Tests
 
 ```
-npm test       # unit tests for file handling, search, version history and the Trash
+npm test       # unit tests for file handling, search, version history, the Trash and video storage
 npm run e2e    # drives the real app (hidden) through every feature; screenshots in test/out/
 ```
 
@@ -98,6 +103,7 @@ One check installs libraries from libraries.excalidraw.com and is skipped when o
 | What | Where |
 | --- | --- |
 | Your drawings | wherever they already are, in the folders you attach |
+| Videos on a board | a `<Board name>.media` folder next to that board |
 | Attached folders, theme, always-on-top | `%APPDATA%\Doodlebay\settings.json` |
 | Your library | `%APPDATA%\Doodlebay\library.excalidrawlib` |
 | Drawings started with no folder attached | `%APPDATA%\Doodlebay\Drafts\` |
@@ -113,7 +119,8 @@ The search index is kept in memory only and never written to disk.
 | `lib/files.js` | file helpers (listing, safe names, atomic saves, settings) |
 | `lib/search.js` | the search index over every attached drawing |
 | `lib/history.js` | version history and the Trash |
-| `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw, `LibrarySections.jsx` library sections, `VersionHistory.jsx` and `TrashSection.jsx` |
+| `lib/media.js` | where a board's videos are stored |
+| `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw, `LibrarySections.jsx` library sections, `VersionHistory.jsx` and `TrashSection.jsx`, `MediaLayer.jsx` and `videoDrop.js` for GIFs and videos |
 | `vite.config.js` | builds `src/` into `dist-renderer/` and copies the editor's fonts so it works offline |
 | `build/make-icon.mjs` | draws `build/icon.png` |
 | `build/licenses.cjs` | writes `THIRD_PARTY_LICENSES.txt` |

@@ -1,5 +1,5 @@
 // The bridge between the editor page and the main process. Nothing else is exposed.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const on = channel => fn => {
   const handler = (_e, ...args) => fn(...args);
@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld('desk', {
   removeTrash: id => ipcRenderer.invoke('trash:remove', id),
   pendingFile: () => ipcRenderer.invoke('file:pending'),
   onOpenFile: on('file:open'),
+  // A dropped File's path on disk, or '' for one made in the page.
+  pathOf: file => webUtils.getPathForFile(file),
+  addMedia: (board, name, source) => ipcRenderer.invoke('media:add', board, name, source),
   revealFile: file => ipcRenderer.invoke('file:reveal', file),
   loadLibrary: () => ipcRenderer.invoke('library:load'),
   saveLibrary: text => ipcRenderer.invoke('library:save', text),

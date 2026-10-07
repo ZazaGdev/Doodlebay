@@ -10,6 +10,7 @@ import {
 import LibrarySections, { libraryAdapter, noteInstall } from './LibrarySections.jsx';
 import VersionHistory from './VersionHistory.jsx';
 import MediaLayer, { keepGif } from './MediaLayer.jsx';
+import { addVideo, videosIn } from './videoDrop.js';
 
 const SAVE_DELAY = 800;
 
@@ -125,6 +126,29 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
     };
   }, [save]);
 
+  // Excalidraw only takes images, so videos dropped or pasted on the board are caught first.
+  useEffect(() => {
+    if (!api) return;
+    const take = (files, x, y, e) => {
+      const videos = videosIn(files);
+      if (!videos.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!fileRef.current) { onError('Draw something first, so the board is saved as a file; then add the video.'); return; }
+      if (videos.length < files.length) onError('Only the videos were added. Drop images on their own.');
+      videos.reduce((p, v, i) => p.then(() => addVideo(api, fileRef.current, v, x + i * 40, y + i * 40)), Promise.resolve())
+        .catch(err => onError(`Could not add the video: ${err.message}`));
+    };
+    const onDrop = e => { if (e.target.closest?.('.excalidraw')) take(e.dataTransfer?.files, e.clientX, e.clientY, e); };
+    const onPaste = e => {
+      const { width, height, offsetLeft, offsetTop } = api.getAppState();
+      take(e.clipboardData?.files, offsetLeft + width / 2, offsetTop + height / 2, e);
+    };
+    window.addEventListener('drop', onDrop, true);
+    window.addEventListener('paste', onPaste, true);
+    return () => { window.removeEventListener('drop', onDrop, true); window.removeEventListener('paste', onPaste, true); };
+  }, [api, onError]);
+
   // Saves first, so nothing typed in the last moment is lost, then reopens the drawing.
   const restore = async time => {
     try {
@@ -166,7 +190,7 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
           <MainMenu.DefaultItems.ChangeCanvasBackground />
         </MainMenu>
       </Excalidraw>
-      <MediaLayer api={api} />
+      <MediaLayer api={api} file={file} />
       {history && file && <VersionHistory file={file} theme={theme} onClose={() => setHistory(false)} onRestore={restore} />}
     </>
   );

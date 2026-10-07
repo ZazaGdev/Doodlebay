@@ -301,7 +301,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* "Add new" at the top of the folder list (Sidebar.jsx). */
 .add-new { display: block; width: calc(100% - 20px); margin: 4px 10px 8px; padding: 6px 10px; border: 0; border-radius: 6px; font-weight: 600; }
 
-/* Live GIFs over the canvas (see MediaLayer.jsx). Same layer as Excalidraw's embeds. */
+/* Live GIFs and videos over the canvas (see MediaLayer.jsx). Same layer as Excalidraw's embeds. */
 .media-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
 .media-item { position: absolute; overflow: hidden; transform-origin: center; }
-.media-item img { position: absolute; max-width: none; }
+.media-item img, .media-item video { position: absolute; max-width: none; object-fit: fill; }
+.media-layer-controls { z-index: 3; }
+.media-controls { position: absolute; display: flex; gap: 4px; pointer-events: auto; }
+.media-controls button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.media-controls button:hover { background: var(--hover); }
+.media-controls button.on { background: var(--active); border-color: var(--accent); }

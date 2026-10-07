@@ -2,11 +2,14 @@
 // re-encodes every inserted image through a canvas too, which throws the other frames away.
 // So keepGif hands Excalidraw the same file id it would make itself, but remembers the
 // original GIF, and keepGifFrames puts it back into the drawing's files before they are
-// saved. MediaLayer then lays a live <img> of each GIF over the spot the canvas draws it,
-// under the selection handles and above the rest of the drawing, the way Excalidraw
-// places embeds. The canvas copy stays, so exports and thumbnails show a still frame.
-import React, { useEffect, useState } from 'react';
+// saved. MediaLayer then lays a live <img> of each GIF, and a <video> for each video image
+// (see videoDrop.js), over the spot the canvas draws it: under the selection handles and
+// above the rest of the drawing, the way Excalidraw places embeds. The canvas copy stays,
+// so exports and thumbnails show a still frame.
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { newElementWith, CaptureUpdateAction } from '@excalidraw/excalidraw';
+import { mediaURL } from './videoDrop.js';
 
 const GIF = 'image/gif';
 const originals = new Map();
@@ -38,10 +41,13 @@ export function keepGifFrames(files) {
   }
 }
 
-const gifsIn = (elements, files) => elements.filter(e =>
-  e.type === 'image' && !e.isDeleted && e.fileId && files[e.fileId]?.mimeType === GIF);
+const isGif = (el, files) => !!el.fileId && files[el.fileId]?.mimeType === GIF;
+const isVideo = el => typeof el.customData?.video === 'string';
+const mediaIn = (elements, files) => elements.filter(e =>
+  e.type === 'image' && !e.isDeleted && (isVideo(e) || isGif(e, files)));
 
-function Gif({ el, src, appState }) {
+// Where the element sits on screen, and how a cropped picture fills it.
+function place(el, appState) {
   const z = appState.zoom.value;
   const [sx, sy] = el.scale || [1, 1];
   const box = {
@@ -52,9 +58,8 @@ function Gif({ el, src, appState }) {
     opacity: el.opacity / 100,
     transform: `rotate(${el.angle}rad) scale(${sx}, ${sy})`,
   };
-  // A cropped image shows part of the picture, scaled so that part fills the element.
   const c = el.crop;
-  const img = c
+  const inner = c
     ? {
         width: c.naturalWidth * (box.width / c.width),
         height: c.naturalHeight * (box.height / c.height),
@@ -62,46 +67,108 @@ function Gif({ el, src, appState }) {
         top: -c.y * (box.height / c.height),
       }
     : { width: '100%', height: '100%', left: 0, top: 0 };
+  return { box, inner };
+}
+
+function Video({ el, src, appState, muted }) {
+  const ref = useRef(null);
+  const loop = el.customData.loop !== false;
+  // React does not keep the muted property in step, so set it here.
+  useEffect(() => { if (ref.current) ref.current.muted = muted; }, [muted]);
+  // Turning repeat back on restarts a video that already reached its end. (With loop set,
+  // `ended` reads false, so look at `paused` instead.)
+  useEffect(() => { const v = ref.current; if (v && loop && v.paused) v.play().catch(() => {}); }, [loop]);
+  const { box, inner } = place(el, appState);
   return (
     <div className="media-item" style={box}>
-      <img src={src} alt="" draggable={false} style={img} />
+      <video ref={ref} src={src} style={inner} autoPlay muted loop={loop} playsInline />
     </div>
   );
 }
 
-export default function MediaLayer({ api }) {
+// Sound and repeat buttons above the selected video.
+function Controls({ el, appState, muted, onMuted, onLoop }) {
+  const { box } = place(el, appState);
+  const loop = el.customData.loop !== false;
+  return (
+    <div className="media-controls" style={{ left: box.left, top: Math.max(0, box.top - 34) }}>
+      <button className={muted ? '' : 'on'} onClick={() => onMuted(!muted)} title="Sound for this video while the board is open">
+        {muted ? 'Unmute' : 'Mute'}
+      </button>
+      <button className={loop ? 'on' : ''} onClick={() => onLoop(!loop)} title="Play again from the start when it ends">
+        Repeat: {loop ? 'on' : 'off'}
+      </button>
+    </div>
+  );
+}
+
+// One layer just before the interactive canvas, so selection handles draw on top; the
+// controls go after it, so they can be clicked.
+function useHosts(api) {
+  const [hosts, setHosts] = useState(null);
+  useEffect(() => {
+    if (!api) return;
+    const canvas = document.querySelector('.excalidraw canvas.interactive');
+    if (!canvas) return;
+    const layer = document.createElement('div');
+    layer.className = 'media-layer';
+    const controls = document.createElement('div');
+    controls.className = 'media-layer media-layer-controls';
+    canvas.parentElement.insertBefore(layer, canvas);
+    canvas.after(controls);
+    setHosts({ layer, controls });
+    return () => { layer.remove(); controls.remove(); setHosts(null); };
+  }, [api]);
+  return hosts;
+}
+
+export default function MediaLayer({ api, file }) {
   const [scene, setScene] = useState(null);
-  const [host, setHost] = useState(null);
+  const [unmuted, setUnmuted] = useState(() => new Set());
+  const hosts = useHosts(api);
 
   useEffect(() => {
     if (!api) return;
     const update = (elements, appState, files) => {
       keepGifFrames(files);
-      const gifs = gifsIn(elements, files);
-      setScene(prev => (!gifs.length && !prev?.gifs.length ? prev : { gifs, appState, files }));
+      const items = mediaIn(elements, files);
+      setScene(prev => (!items.length && !prev?.items.length ? prev : { items, appState, files }));
     };
     update(api.getSceneElements(), api.getAppState(), api.getFiles());
     return api.onChange(update);
   }, [api]);
 
-  // The layer goes just before the interactive canvas, so selection handles draw on top.
-  useEffect(() => {
-    if (!api) return;
-    const canvas = document.querySelector('.excalidraw canvas.interactive');
-    if (!canvas) return;
-    const div = document.createElement('div');
-    div.className = 'media-layer';
-    canvas.parentElement.insertBefore(div, canvas);
-    setHost(div);
-    return () => { div.remove(); setHost(null); };
-  }, [api]);
+  if (!hosts || !scene?.items.length) return null;
+  const { items, appState, files } = scene;
+  const shown = items.filter(el => el.id !== appState.croppingElementId && (!isVideo(el) || file));
+  const selected = Object.keys(appState.selectedElementIds || {});
+  const picked = selected.length === 1 && shown.find(el => el.id === selected[0] && isVideo(el));
 
-  if (!host || !scene?.gifs.length) return null;
-  const { gifs, appState, files } = scene;
-  return createPortal(
-    gifs
-      .filter(el => el.id !== appState.croppingElementId)
-      .map(el => <Gif key={el.id} el={el} src={files[el.fileId].dataURL} appState={appState} />),
-    host,
+  const setMuted = (id, muted) => setUnmuted(prev => {
+    const next = new Set(prev);
+    if (muted) next.delete(id); else next.add(id);
+    return next;
+  });
+  const setLoop = (id, loop) => api.updateScene({
+    elements: api.getSceneElementsIncludingDeleted().map(e =>
+      (e.id === id ? newElementWith(e, { customData: { ...e.customData, loop } }) : e)),
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  });
+
+  return (
+    <>
+      {createPortal(shown.map(el => (isVideo(el)
+        ? <Video key={el.id} el={el} src={mediaURL(file, el.customData.video)} appState={appState} muted={!unmuted.has(el.id)} />
+        : (
+          <div key={el.id} className="media-item" style={place(el, appState).box}>
+            <img src={files[el.fileId].dataURL} alt="" draggable={false} style={place(el, appState).inner} />
+          </div>
+        ))), hosts.layer)}
+      {picked && !appState.selectedElementsAreBeingDragged && createPortal(
+        <Controls el={picked} appState={appState} muted={!unmuted.has(picked.id)}
+          onMuted={m => setMuted(picked.id, m)} onLoop={l => setLoop(picked.id, l)} />,
+        hosts.controls,
+      )}
+    </>
   );
 }

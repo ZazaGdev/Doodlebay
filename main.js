@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXT, insideAny, listDir, cleanName, freePath, untitledPath, emptyScene, writeAtomic, readJson, writeJson } from './lib/files.js';
 import { SearchIndex } from './lib/search.js';
 import { History, Trash } from './lib/history.js';
+import { VIDEO_TYPES, addMediaFile, resolveMedia } from './lib/media.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RENDERER = path.join(here, 'dist-renderer');
@@ -235,6 +236,9 @@ ipcMain.handle('file:pending', () => {
   pendingFile = null;
   return file;
 });
+// A video dropped on a board is copied into the board's media folder, from its path on
+// disk when there is one, otherwise from the bytes the editor sends.
+ipcMain.handle('media:add', (_e, board, name, source) => addMediaFile(guard(board), name, source));
 ipcMain.handle('file:reveal', (_e, file) => shell.showItemInFolder(guard(file)));
 
 ipcMain.handle('library:load', () => fsp.readFile(LIBRARY(), 'utf8').catch(() => null));
@@ -320,6 +324,15 @@ async function migrateFromExcaliDesk() {
 app.whenReady().then(async () => {
   if (!firstCopy) return;
   protocol.handle('app', req => {
+    // app://doodlebay/media?board=...&src=... plays a video from a board's media folder.
+    const url = new URL(req.url);
+    if (url.pathname === '/media') {
+      try {
+        const file = resolveMedia(guard(url.searchParams.get('board')), url.searchParams.get('src'));
+        if (!VIDEO_TYPES[path.extname(file).toLowerCase()]) throw new Error('Not a video');
+        return net.fetch(pathToFileURL(file).toString(), { headers: req.headers });
+      } catch { return new Response('Not found', { status: 404 }); }
+    }
     const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '') || 'index.html';
     const file = path.normalize(path.join(RENDERER, rel));
     if (!file.startsWith(RENDERER)) return new Response('Not found', { status: 404 });
