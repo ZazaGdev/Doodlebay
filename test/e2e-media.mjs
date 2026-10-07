@@ -1,5 +1,6 @@
-// End-to-end check of GIFs (and later videos) on a board, run hidden after `npm run build`:
-// `node test/e2e-media.mjs`. Uses a temp settings folder and a temp drawings folder.
+// End-to-end check of GIFs and videos on a board, run after `npm run build`:
+// `node test/e2e-media.mjs`, or with DOODLEBAY_EXE set to check a packaged build.
+// Uses a temp settings folder and a temp drawings folder.
 import { _electron as electron } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -29,7 +30,9 @@ const check = async (name, fn) => {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function open() {
-  const app = await electron.launch({ args: [root], env: { ...process.env, DOODLEBAY_HIDDEN: '1', DOODLEBAY_USER_DATA: userData } });
+  // DOODLEBAY_EXE runs the checks against a packaged build, e.g. dist/win-unpacked/Doodlebay.exe.
+  const exe = process.env.DOODLEBAY_EXE;
+  const app = await electron.launch({ ...(exe ? { executablePath: exe, args: [] } : { args: [root] }), env: { ...process.env, DOODLEBAY_HIDDEN: '1', DOODLEBAY_USER_DATA: userData } });
   const page = await app.firstWindow();
   page.on('pageerror', e => console.log('  page error:', e.message));
   // A hidden window barely paints, so GIFs hardly advance. Show it off screen and unfocused.
