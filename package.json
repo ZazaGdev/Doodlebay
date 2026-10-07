@@ -12,7 +12,7 @@
     "build": "vite build",
     "start": "npm run build && electron .",
     "test": "node --test test/files.test.js test/search.test.js test/history.test.js",
-    "e2e": "npm run build && node test/e2e.mjs",
+    "e2e": "npm run build && node test/e2e.mjs && node test/e2e-media.mjs",
     "pack": "npm run build && npm run licenses && electron-builder --win dir",
     "dist": "npm run build && npm run licenses && electron-builder --win nsis",
     "licenses": "node build/licenses.cjs"

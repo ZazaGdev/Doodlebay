@@ -9,6 +9,7 @@ import {
 } from '@excalidraw/excalidraw';
 import LibrarySections, { libraryAdapter, noteInstall } from './LibrarySections.jsx';
 import VersionHistory from './VersionHistory.jsx';
+import MediaLayer, { keepGif } from './MediaLayer.jsx';
 
 const SAVE_DELAY = 800;
 
@@ -146,6 +147,7 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
         name={name || 'Untitled'}
         UIOptions={UI}
         onChange={onChange}
+        generateIdForFile={keepGif}
         renderTopRightUI={() => file && (
           <button className={`save-pill ${status}`} onClick={save} title="Saved to the file automatically. Ctrl+S saves now.">{label}</button>
         )}
@@ -164,6 +166,7 @@ export default function Editor({ file, name, theme, onTheme, onError, onCreated,
           <MainMenu.DefaultItems.ChangeCanvasBackground />
         </MainMenu>
       </Excalidraw>
+      <MediaLayer api={api} />
       {history && file && <VersionHistory file={file} theme={theme} onClose={() => setHistory(false)} onRestore={restore} />}
     </>
   );

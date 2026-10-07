@@ -300,3 +300,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* "Add new" at the top of the folder list (Sidebar.jsx). */
 .add-new { display: block; width: calc(100% - 20px); margin: 4px 10px 8px; padding: 6px 10px; border: 0; border-radius: 6px; font-weight: 600; }
+
+/* Live GIFs over the canvas (see MediaLayer.jsx). Same layer as Excalidraw's embeds. */
+.media-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.media-item { position: absolute; overflow: hidden; transform-origin: center; }
+.media-item img { position: absolute; max-width: none; }
