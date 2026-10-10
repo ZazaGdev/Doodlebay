@@ -1,3 +1,5 @@
+<p align="center"><img src="build/logo.svg" alt="Doodlebay logo: a whiteboard on legs" width="128"></p>
+
 # Doodlebay
 
 A free, minimal Windows desktop drawing app built on the open-source [Excalidraw](https://github.com/excalidraw/excalidraw) editor.
@@ -123,7 +125,8 @@ The search index is kept in memory only and never written to disk.
 | `lib/media.js` | where a board's videos are stored |
 | `src/` | the page: `main.jsx` app shell, `Sidebar.jsx` folder tree, `Editor.jsx` Excalidraw, `LibrarySections.jsx` library sections, `VersionHistory.jsx` and `TrashSection.jsx`, `MediaLayer.jsx` and `videoDrop.js` for GIFs and videos |
 | `vite.config.js` | builds `src/` into `dist-renderer/` and copies the editor's fonts so it works offline |
-| `build/make-icon.mjs` | draws `build/icon.png` |
+| `build/logo.svg` | the Doodlebay logo |
+| `build/make-icon.mjs` | draws `build/icon.png` from the logo's shapes |
 | `build/licenses.cjs` | writes `THIRD_PARTY_LICENSES.txt` |
 
 ## What is left out
